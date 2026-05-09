@@ -232,6 +232,62 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   color: var(--text-muted);
 }
 
+/* Sections bar (sub-projects) */
+.sections-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: -6px 0 14px 0;
+  padding-left: 14px;
+  border-left: 2px solid var(--border);
+}
+.sections-bar:empty { display: none; }
+.section-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 14px;
+  font-size: 12px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: 0.15s;
+  font-family: inherit;
+}
+.section-chip:hover { background: var(--hover); color: var(--text); }
+.section-chip.active {
+  background: var(--accent-soft);
+  border-color: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 500;
+}
+.section-chip[contenteditable="true"] {
+  outline: 1px dashed var(--accent);
+  outline-offset: 2px;
+}
+.section-chip .del {
+  margin-left: 2px;
+  color: var(--text-light);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  display: none;
+  padding: 0 2px;
+}
+.section-chip:hover .del { display: inline; }
+.section-chip .del:hover { color: var(--red); }
+.section-add {
+  border-style: dashed;
+  color: var(--text-muted);
+}
+
+/* Section drop target while dragging */
+.task-list.drop-section { background: var(--accent-soft); border-radius: 6px; min-height: 30px; }
+.group-header.drop-section { background: var(--accent-soft); color: var(--accent); border-radius: 6px; }
+
 /* Filters */
 .filters {
   display: flex;
@@ -1026,6 +1082,7 @@ select:focus, input[type="date"]:focus, input[type="time"]:focus, input[type="da
 
   <div id="view-tasks">
     <div class="projects-bar" id="projectsBar"></div>
+    <div class="sections-bar" id="sectionsBar"></div>
 
     <div class="filters">
       <input type="text" class="search" id="search" placeholder="Поиск по задачам... (⌘K)" aria-label="Поиск">
@@ -1033,6 +1090,7 @@ select:focus, input[type="date"]:focus, input[type="time"]:focus, input[type="da
         <option value="none">Без группировки</option>
         <option value="date">По дате</option>
         <option value="project">По проекту</option>
+        <option value="section">По разделу</option>
         <option value="priority">По приоритету</option>
       </select>
       <select id="sort" aria-label="Сортировка">
@@ -1119,7 +1177,8 @@ function defaultState() {
   return {
     tasks: [],
     projects: DEFAULT_PROJECTS.slice(),
-    filter: { project: 'all', status: 'all', priority: 'all', search: '', showDone: false },
+    sections: [],
+    filter: { project: 'all', section: 'all', status: 'all', priority: 'all', search: '', showDone: false },
     sort: 'deadline',
     group: 'none',
     view: 'tasks',
@@ -1132,11 +1191,13 @@ function migrate(s) {
   s = Object.assign(defaultState(), s);
   s.filter = Object.assign(defaultState().filter, s.filter || {});
   if (!Array.isArray(s.projects) || s.projects.length === 0) s.projects = DEFAULT_PROJECTS.slice();
+  if (!Array.isArray(s.sections)) s.sections = [];
   if (!Array.isArray(s.tasks)) s.tasks = [];
   s.tasks.forEach(t => {
     if (!t.history) t.history = [];
     if (!t.subtasks) t.subtasks = [];
     if (!('description' in t)) t.description = '';
+    if (!('section' in t)) t.section = null;
   });
   return s;
 }
@@ -1227,6 +1288,10 @@ function renderEvent(h) {
       const p = state.projects.find(x => x.id === a.to);
       return `Проект: <strong>${esc(p ? p.name : '—')}</strong>`;
     }
+    case 'section': {
+      const s = a.to ? sectionById(a.to) : null;
+      return `Раздел: <strong>${esc(s ? s.name : 'без раздела')}</strong>`;
+    }
     case 'title': return 'Название изменено';
     case 'description': return 'Описание обновлено';
     case 'subtask-added': return `Добавлена подзадача: <strong>${esc(a.title)}</strong>`;
@@ -1238,12 +1303,19 @@ function renderEvent(h) {
 }
 
 function addTask({ title, project, priority, deadline }) {
+  // Inherit current section filter if it matches the chosen project
+  let section = null;
+  if (state.filter.section && state.filter.section !== 'all' && state.filter.section !== '_none') {
+    const sec = sectionById(state.filter.section);
+    if (sec && sec.projectId === project) section = sec.id;
+  }
   const task = {
     id: uid(),
     title: title.trim(),
     description: '',
     status: 'todo',
     project,
+    section,
     priority,
     deadline: deadline || null,
     createdAt: now(),
@@ -1297,9 +1369,50 @@ function setDeadline(task, value) {
 function setProject(task, value) {
   if (task.project === value) return;
   task.project = value;
+  // section belongs to a project — drop it if project changes
+  if (task.section) {
+    const sec = sectionById(task.section);
+    if (!sec || sec.projectId !== value) task.section = null;
+  }
   logEvent(task, 'project', { to: value });
   save();
 }
+
+function setSection(task, value) {
+  const v = value || null;
+  if (task.section === v) return;
+  task.section = v;
+  logEvent(task, 'section', { to: v });
+  save();
+}
+
+function addSection(projectId, name) {
+  const s = { id: uid(), name: name.trim(), projectId };
+  state.sections.push(s);
+  save();
+  return s;
+}
+
+function deleteSection(id) {
+  const sec = sectionById(id);
+  if (!sec) return;
+  if (!confirm(`Удалить раздел «${sec.name}»? Задачи останутся в проекте, но без раздела.`)) return;
+  state.sections = state.sections.filter(s => s.id !== id);
+  state.tasks.forEach(t => { if (t.section === id) t.section = null; });
+  if (state.filter.section === id) state.filter.section = 'all';
+  save();
+}
+
+function renameSection(id, name) {
+  const sec = sectionById(id);
+  const v = (name || '').trim();
+  if (!sec || !v || sec.name === v) return;
+  sec.name = v;
+  save();
+}
+
+function sectionById(id) { return state.sections.find(s => s.id === id); }
+function sectionsByProject(pid) { return state.sections.filter(s => s.projectId === pid); }
 
 function setTitle(task, value) {
   const v = value.trim();
@@ -1355,9 +1468,13 @@ function deleteProject(id) {
   if (state.projects.length <= 1) { alert('Должен остаться хотя бы один проект'); return; }
   if (!confirm('Удалить проект? Задачи в нём будут перенесены в первый оставшийся.')) return;
   state.projects = state.projects.filter(p => p.id !== id);
+  state.sections = state.sections.filter(s => s.projectId !== id);
   const fallback = state.projects[0].id;
-  state.tasks.forEach(t => { if (t.project === id) t.project = fallback; });
+  state.tasks.forEach(t => {
+    if (t.project === id) { t.project = fallback; t.section = null; }
+  });
   if (state.filter.project === id) state.filter.project = 'all';
+  state.filter.section = 'all';
   save();
 }
 
@@ -1378,6 +1495,10 @@ function visibleTasks() {
   const f = state.filter;
   let list = state.tasks.filter(t => {
     if (f.project !== 'all' && t.project !== f.project) return false;
+    if (f.section !== 'all') {
+      if (f.section === '_none' && t.section) return false;
+      if (f.section !== '_none' && t.section !== f.section) return false;
+    }
     if (f.status !== 'all' && t.status !== f.status) return false;
     if (f.priority !== 'all' && t.priority !== f.priority) return false;
     if (f.search) {
@@ -1444,6 +1565,26 @@ function groupTasks(tasks) {
     }
     return groups.filter(g => g.tasks.length > 0);
   }
+  if (mode === 'section') {
+    const groups = new Map();
+    const noneKey = '_none';
+    // Pre-create section groups for current project (or all sections if no project filter)
+    const relevant = state.filter.project === 'all'
+      ? state.sections
+      : sectionsByProject(state.filter.project);
+    for (const s of relevant) {
+      const proj = projectById(s.projectId);
+      const label = state.filter.project === 'all' && proj ? `${s.name} · ${proj.name}` : s.name;
+      groups.set(s.id, { key: s.id, sectionId: s.id, label, color: proj ? proj.color : null, tasks: [] });
+    }
+    groups.set(noneKey, { key: noneKey, sectionId: null, label: 'Без раздела', tasks: [] });
+    for (const t of tasks) {
+      const k = t.section && groups.has(t.section) ? t.section : noneKey;
+      groups.get(k).tasks.push(t);
+    }
+    // Keep all section buckets even if empty so user can drop into them; drop empty 'no section' if empty
+    return [...groups.values()].filter(g => g.tasks.length > 0 || g.sectionId);
+  }
   return [{ key: '_', label: '', tasks }];
 }
 
@@ -1496,6 +1637,7 @@ function render() {
   renderOverdueBanner();
   renderTabs();
   renderProjectsBar();
+  renderSectionsBar();
   renderProjectSelect();
   renderFilters();
   renderTaskList();
@@ -1571,9 +1713,14 @@ function renderProjectsBar() {
   bar.querySelectorAll('[data-project]').forEach(el => {
     el.addEventListener('click', e => {
       if (e.target.dataset.delProject) return;
-      state.filter.project = el.dataset.project;
+      const newPid = el.dataset.project;
+      if (state.filter.project !== newPid) {
+        state.filter.project = newPid;
+        state.filter.section = 'all';
+      }
       save();
       renderProjectsBar();
+      renderSectionsBar();
       renderTaskList();
     });
   });
@@ -1585,6 +1732,75 @@ function renderProjectsBar() {
     });
   });
   document.getElementById('addProjectBtn').addEventListener('click', openAddProjectModal);
+}
+
+function renderSectionsBar() {
+  const bar = document.getElementById('sectionsBar');
+  if (!bar) return;
+  const pid = state.filter.project;
+  if (pid === 'all') { bar.innerHTML = ''; return; }
+  const sections = sectionsByProject(pid);
+  let html = `<button class="section-chip ${state.filter.section === 'all' ? 'active' : ''}" data-section="all">Все разделы</button>`;
+  for (const s of sections) {
+    html += `<button class="section-chip ${state.filter.section === s.id ? 'active' : ''}" data-section="${s.id}" title="Двойной клик — переименовать">
+      <span class="name">${esc(s.name)}</span>
+      <span class="del" data-del-section="${s.id}" title="Удалить раздел">×</span>
+    </button>`;
+  }
+  html += `<button class="section-chip section-add" id="addSectionBtn">+ Подраздел</button>`;
+  bar.innerHTML = html;
+
+  bar.querySelectorAll('[data-section]').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.dataset.delSection) return;
+      if (el.isContentEditable) return;
+      state.filter.section = el.dataset.section;
+      save();
+      renderSectionsBar();
+      renderTaskList();
+    });
+    // Inline rename: dblclick on a real section (not "all")
+    if (el.dataset.section !== 'all') {
+      el.addEventListener('dblclick', e => {
+        e.preventDefault();
+        const nameEl = el.querySelector('.name');
+        if (!nameEl) return;
+        nameEl.contentEditable = 'true';
+        el.classList.add('editing');
+        nameEl.focus();
+        const range = document.createRange();
+        range.selectNodeContents(nameEl);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        const finish = (commit) => {
+          nameEl.contentEditable = 'false';
+          el.classList.remove('editing');
+          if (commit) renameSection(el.dataset.section, nameEl.textContent);
+          renderSectionsBar();
+          renderTaskList();
+        };
+        nameEl.addEventListener('blur', () => finish(true), { once: true });
+        nameEl.addEventListener('keydown', ev => {
+          if (ev.key === 'Enter') { ev.preventDefault(); nameEl.blur(); }
+          if (ev.key === 'Escape') {
+            ev.preventDefault();
+            nameEl.textContent = sectionById(el.dataset.section).name;
+            finish(false);
+          }
+        });
+      });
+    }
+  });
+  bar.querySelectorAll('[data-del-section]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      deleteSection(el.dataset.delSection);
+      render();
+    });
+  });
+  const addBtn = document.getElementById('addSectionBtn');
+  if (addBtn) addBtn.addEventListener('click', () => openAddSectionModal(pid));
 }
 
 function renderProjectSelect() {
@@ -1615,15 +1831,18 @@ function renderTaskList() {
     return;
   }
   const groups = groupTasks(list);
-  const dnd = state.sort === 'manual' && state.group === 'none';
+  const orderDnd = state.sort === 'manual' && state.group === 'none';
+  const sectionDnd = state.group === 'section';
+  const dnd = orderDnd || sectionDnd;
   let html = '';
   for (const g of groups) {
     const headerCls = g.danger ? 'group-header group-overdue' : 'group-header';
+    const sectionAttr = sectionDnd ? ` data-section="${g.sectionId == null ? '_none' : esc(g.sectionId)}"` : '';
     const header = state.group === 'none' ? '' :
-      `<div class="${headerCls}">${g.color ? `<span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${g.color}"></span> ` : ''}${esc(g.label)}<span class="count">${g.tasks.length}</span></div>`;
+      `<div class="${headerCls}"${sectionAttr}>${g.color ? `<span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${g.color}"></span> ` : ''}${esc(g.label)}<span class="count">${g.tasks.length}</span></div>`;
     html += `<div class="task-group">
       ${header}
-      <div class="task-list" data-group="${esc(g.key)}">
+      <div class="task-list" data-group="${esc(g.key)}"${sectionAttr}>
         ${g.tasks.map(t => taskHtml(t, dnd)).join('')}
       </div>
     </div>`;
@@ -1631,6 +1850,38 @@ function renderTaskList() {
   root.innerHTML = html;
 
   root.querySelectorAll('.task').forEach(el => attachTaskHandlers(el, dnd));
+  if (sectionDnd) attachSectionDropHandlers(root);
+}
+
+function attachSectionDropHandlers(root) {
+  const targets = root.querySelectorAll('[data-section]');
+  targets.forEach(el => {
+    el.addEventListener('dragover', e => {
+      if (!dragId) return;
+      if (e.target.closest('.task')) return; // let task handler manage visual
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      el.classList.add('drop-section');
+    });
+    el.addEventListener('dragleave', e => {
+      if (e.target === el) el.classList.remove('drop-section');
+    });
+    el.addEventListener('drop', e => {
+      if (!dragId) return;
+      // If dropping directly on a task, let task handler manage it
+      if (e.target.closest('.task')) { el.classList.remove('drop-section'); return; }
+      e.preventDefault();
+      e.stopPropagation();
+      const src = state.tasks.find(t => t.id === dragId);
+      if (src) {
+        const sid = el.dataset.section === '_none' ? null : el.dataset.section;
+        setSection(src, sid);
+      }
+      dragId = null;
+      el.classList.remove('drop-section');
+      renderTaskList();
+    });
+  });
 }
 
 function taskHtml(t, draggable) {
@@ -1691,7 +1942,7 @@ function attachTaskHandlers(el, draggable) {
     el.addEventListener('dragend', () => {
       dragId = null;
       el.classList.remove('dragging');
-      document.querySelectorAll('.drop-above,.drop-below').forEach(x => x.classList.remove('drop-above', 'drop-below'));
+      document.querySelectorAll('.drop-above,.drop-below,.drop-section').forEach(x => x.classList.remove('drop-above', 'drop-below', 'drop-section'));
     });
     el.addEventListener('dragover', e => {
       if (!dragId || dragId === id) return;
@@ -1706,9 +1957,16 @@ function attachTaskHandlers(el, draggable) {
     });
     el.addEventListener('drop', e => {
       e.preventDefault();
+      e.stopPropagation();
       if (!dragId || dragId === id) return;
       const rect = el.getBoundingClientRect();
       const above = (e.clientY - rect.top) < rect.height / 2;
+      // When grouped by section, dropping onto a task also reassigns section
+      if (state.group === 'section') {
+        const src = state.tasks.find(t => t.id === dragId);
+        const dst = state.tasks.find(t => t.id === id);
+        if (src && dst) setSection(src, dst.section || null);
+      }
       moveTask(dragId, id, above ? 'before' : 'after');
       dragId = null;
       renderTaskList();
@@ -1829,9 +2087,33 @@ function wirePanel(panel, task) {
   });
   panel.querySelector('[data-field="project"]').addEventListener('change', e => {
     setProject(task, e.target.value);
+    // rebuild section dropdown for new project
+    const secSel = panel.querySelector('[data-field="section"]');
+    if (secSel) secSel.innerHTML = sectionSelectOptions(task);
     renderTaskList();
     refreshPanelHeader(panel, task);
   });
+  const secSel = panel.querySelector('[data-field="section"]');
+  if (secSel) {
+    secSel.addEventListener('change', e => {
+      const v = e.target.value === '_none' ? null : (e.target.value === '_new' ? '_new' : e.target.value);
+      if (v === '_new') {
+        const name = prompt('Название нового раздела:');
+        if (name && name.trim()) {
+          const sec = addSection(task.project, name.trim());
+          setSection(task, sec.id);
+          render();
+        } else {
+          // restore previous selection
+          e.target.value = task.section || '_none';
+        }
+      } else {
+        setSection(task, v);
+        renderTaskList();
+        renderSectionsBar();
+      }
+    });
+  }
   panel.querySelector('[data-field="priority"]').addEventListener('change', e => {
     setPriority(task, e.target.value);
     renderTaskList();
@@ -2001,6 +2283,12 @@ function panelHtml(task) {
           </select>
         </div>
         <div class="field">
+          <label>Раздел</label>
+          <select data-field="section">
+            ${sectionSelectOptions(task)}
+          </select>
+        </div>
+        <div class="field">
           <label>Приоритет</label>
           <select data-field="priority">
             ${Object.entries(PRIORITY_LABEL).map(([k,v]) => `<option value="${k}" ${task.priority===k?'selected':''}>${v}</option>`).join('')}
@@ -2121,6 +2409,52 @@ function openAddProjectModal() {
     if (e.key === 'Escape') close();
   });
   setTimeout(() => modal.querySelector('#projName').focus(), 0);
+}
+
+function sectionSelectOptions(task) {
+  const secs = sectionsByProject(task.project);
+  const cur = task.section;
+  let html = `<option value="_none" ${!cur ? 'selected' : ''}>— Без раздела</option>`;
+  for (const s of secs) {
+    html += `<option value="${s.id}" ${cur === s.id ? 'selected' : ''}>${esc(s.name)}</option>`;
+  }
+  html += `<option value="_new">+ Новый раздел…</option>`;
+  return html;
+}
+
+function openAddSectionModal(projectId) {
+  const proj = projectById(projectId);
+  if (!proj) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  const modal = document.createElement('div');
+  modal.className = 'mini-modal';
+  modal.innerHTML = `
+    <h3>Новый раздел в «${esc(proj.name)}»</h3>
+    <input type="text" id="secName" placeholder="Название раздела" autofocus>
+    <div class="modal-actions">
+      <button class="btn" id="secCancel">Отмена</button>
+      <button class="btn btn-primary" id="secSave">Создать</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.body.appendChild(modal);
+  const close = () => { overlay.remove(); modal.remove(); };
+  overlay.addEventListener('click', close);
+  modal.querySelector('#secCancel').addEventListener('click', close);
+  const saveSec = () => {
+    const name = modal.querySelector('#secName').value.trim();
+    if (!name) return;
+    addSection(projectId, name);
+    close();
+    render();
+  };
+  modal.querySelector('#secSave').addEventListener('click', saveSec);
+  modal.querySelector('#secName').addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveSec();
+    if (e.key === 'Escape') close();
+  });
+  setTimeout(() => modal.querySelector('#secName').focus(), 0);
 }
 
 // ===== Help modal =====
