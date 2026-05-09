@@ -1,0 +1,2705 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#796eff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16171a" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Ежедневник">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Мой ежедневник</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f9f9fa;
+  --card: #ffffff;
+  --text: #1e1f21;
+  --text-muted: #6f7782;
+  --text-light: #9ca0a8;
+  --border: #e8e8e9;
+  --hover: #f3f4f6;
+  --accent: #796eff;
+  --accent-soft: #ede9ff;
+  --green: #14a085;
+  --green-soft: #d6f0e9;
+  --amber: #c47f0a;
+  --amber-soft: #fdf0d6;
+  --red: #e8384f;
+  --red-soft: #fadbe0;
+  --blue: #4573d2;
+  --blue-soft: #dbe5f5;
+  --gray-soft: #eef0f2;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 1px 2px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.05);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.18);
+  --radius: 8px;
+}
+
+/* Dark theme: applied when data-theme="dark" OR (no explicit theme AND OS is dark) */
+:root[data-theme="dark"],
+:root[data-theme="auto"][data-os-dark="1"] {
+  --bg: #16171a;
+  --card: #1f2024;
+  --text: #ebecee;
+  --text-muted: #9ca1ab;
+  --text-light: #6e7480;
+  --border: #2c2e33;
+  --hover: #26282d;
+  --accent: #9b91ff;
+  --accent-soft: #2a2658;
+  --green: #4dc7a3;
+  --green-soft: #1c3a32;
+  --amber: #e0a64a;
+  --amber-soft: #3d2e15;
+  --red: #ff6177;
+  --red-soft: #422028;
+  --blue: #6f9bdf;
+  --blue-soft: #1d2c44;
+  --gray-soft: #2a2c31;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-md: 0 1px 2px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 28px rgba(0,0,0,0.55);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+html, body { min-height: 100%; }
+
+button { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offset: 2px; }
+
+.app {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 16px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.header h1 {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+.header .date {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 2px;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.stats {
+  display: flex;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.stats strong { color: var(--text); font-weight: 600; }
+.icon-btn {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.icon-btn:hover { background: var(--hover); }
+
+/* Overdue banner */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--red-soft);
+  color: var(--red);
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.banner button {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  opacity: 0.7;
+}
+.banner button:hover { opacity: 1; }
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 18px;
+}
+.tab {
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  transition: 0.15s;
+  margin-bottom: -1px;
+}
+.tab.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  font-weight: 500;
+}
+.tab:hover:not(.active) { color: var(--text); }
+
+/* Projects bar */
+.projects-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.project-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: 0.15s;
+  font-family: inherit;
+}
+.project-chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+.project-chip:hover { background: var(--hover); }
+.project-chip.active {
+  background: var(--accent-soft);
+  border-color: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 500;
+}
+.project-chip .del {
+  margin-left: 4px;
+  color: var(--text-light);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: none;
+  padding: 0 2px;
+}
+.project-chip:hover .del { display: inline; }
+.project-chip .del:hover { color: var(--red); }
+.project-add {
+  border-style: dashed;
+  color: var(--text-muted);
+}
+
+/* Filters */
+.filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.search {
+  flex: 1;
+  min-width: 180px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  background: var(--card);
+  color: var(--text);
+  font-family: inherit;
+}
+.search:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+select, input[type="date"], input[type="time"], input[type="datetime-local"] {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+select:focus, input[type="date"]:focus, input[type="time"]:focus, input[type="datetime-local"]:focus {
+  outline: none; border-color: var(--accent);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+.toggle input { accent-color: var(--accent); }
+
+/* Add task */
+.add-task {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.add-task input[type="text"] {
+  flex: 1;
+  min-width: 200px;
+  border: none;
+  font-size: 14px;
+  font-family: inherit;
+  background: transparent;
+  color: var(--text);
+  padding: 4px 0;
+}
+.add-task input[type="text"]:focus { outline: none; }
+
+.btn {
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text);
+  transition: 0.15s;
+}
+.btn:hover { background: var(--hover); }
+.btn-primary {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+.btn-primary:hover { background: #6a5feb; filter: brightness(1.05); }
+.btn-ghost { border-color: transparent; background: transparent; }
+.btn-ghost:hover { background: var(--hover); }
+
+/* Task groups */
+.task-group { margin-bottom: 18px; }
+.group-header {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 4px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.group-header .count {
+  font-weight: 400;
+  color: var(--text-light);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+}
+.group-overdue { color: var(--red); }
+
+/* Task list */
+.task-list { display: flex; flex-direction: column; gap: 6px; }
+.task {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: 0.15s;
+}
+.task:hover {
+  border-color: color-mix(in srgb, var(--text) 15%, var(--border));
+  box-shadow: var(--shadow-sm);
+}
+.task.dragging { opacity: 0.4; }
+.task.drop-above { border-top: 2px solid var(--accent); }
+.task.drop-below { border-bottom: 2px solid var(--accent); }
+.task.draggable { cursor: grab; }
+.task.draggable:active { cursor: grabbing; }
+.task.done .title { text-decoration: line-through; color: var(--text-light); }
+.check {
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid color-mix(in srgb, var(--text) 28%, transparent);
+  border-radius: 50%;
+  flex-shrink: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  transition: 0.15s;
+  padding: 0;
+  margin-top: 1px;
+}
+.check:hover { border-color: var(--green); }
+.task.done .check { background: var(--green); border-color: var(--green); }
+.check.checked { background: var(--green); border-color: var(--green); }
+.check.checked::after, .task.done .check::after {
+  content: '';
+  width: 5px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+.task .body { flex: 1; min-width: 0; }
+.task .title {
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 500;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.task .title.editing {
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  display: block;
+  white-space: pre-wrap;
+  outline: none;
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 1px;
+}
+.task .meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.task .right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+/* Tags */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.tag .dot { width: 6px; height: 6px; border-radius: 50%; }
+.tag-status-todo { background: var(--gray-soft); color: var(--text-muted); }
+.tag-status-progress { background: var(--blue-soft); color: var(--blue); }
+.tag-status-done { background: var(--green-soft); color: var(--green); }
+.tag-prio-high { background: var(--red-soft); color: var(--red); }
+.tag-prio-medium { background: var(--amber-soft); color: var(--amber); }
+.tag-prio-low { background: var(--gray-soft); color: var(--text-muted); }
+.tag-deadline-overdue { background: var(--red-soft); color: var(--red); }
+.tag-deadline-today { background: var(--amber-soft); color: var(--amber); }
+.tag-deadline-future { background: var(--gray-soft); color: var(--text-muted); }
+.tag-project { background: var(--gray-soft); color: var(--text); }
+
+/* Empty */
+.empty { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+.empty .icon { font-size: 36px; margin-bottom: 8px; opacity: 0.4; }
+
+/* Drawer */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.18);
+  z-index: 50;
+  animation: fade 0.15s;
+}
+:root[data-theme="dark"] .overlay,
+:root[data-theme="auto"][data-os-dark="1"] .overlay { background: rgba(0,0,0,0.5); }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+.panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 480px;
+  max-width: 100vw;
+  height: 100%;
+  background: var(--card);
+  box-shadow: var(--shadow-lg);
+  z-index: 51;
+  display: flex;
+  flex-direction: column;
+  animation: slide 0.2s;
+}
+@keyframes slide { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.panel-header .left { display: flex; align-items: center; gap: 10px; }
+.panel-close {
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  border-radius: 4px;
+  line-height: 1;
+}
+.panel-close:hover { background: var(--hover); }
+.panel-body { padding: 18px 20px; overflow-y: auto; flex: 1; }
+
+.title-input {
+  font-size: 18px;
+  font-weight: 600;
+  border: none;
+  padding: 6px 0;
+  width: 100%;
+  font-family: inherit;
+  color: var(--text);
+  background: transparent;
+}
+.title-input:focus { outline: none; }
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 13px;
+}
+.field label { width: 100px; color: var(--text-muted); flex-shrink: 0; }
+.field select, .field input[type="date"], .field input[type="time"], .field input[type="datetime-local"] { flex: 1; }
+.field-row { display: flex; gap: 8px; flex: 1; }
+.field-row > * { flex: 1; min-width: 0; }
+
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 18px 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.section-label .hint {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-light);
+  font-size: 11px;
+}
+.desc {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  resize: vertical;
+  min-height: 70px;
+  background: var(--card);
+  color: var(--text);
+}
+.desc:focus { outline: none; border-color: var(--accent); }
+.desc-preview {
+  padding: 10px;
+  font-size: 13px;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bg) 50%, var(--card));
+  cursor: text;
+  min-height: 30px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.desc-preview h2 { font-size: 16px; margin: 6px 0 4px; }
+.desc-preview h3 { font-size: 14px; margin: 6px 0 4px; }
+.desc-preview h4 { font-size: 13px; margin: 6px 0 4px; }
+.desc-preview ul { padding-left: 18px; margin: 4px 0; }
+.desc-preview code {
+  background: var(--gray-soft);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.desc-preview a { color: var(--accent); }
+.desc-preview .placeholder { color: var(--text-light); }
+
+/* Subtasks */
+.subtasks { display: flex; flex-direction: column; gap: 2px; }
+.subtask {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13px;
+}
+.subtask input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--green);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.subtask .text {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text);
+  padding: 2px 0;
+}
+.subtask .text:focus { outline: none; }
+.subtask.done .text { text-decoration: line-through; color: var(--text-light); }
+.subtask .del {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 2px 6px;
+  opacity: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+.subtask:hover .del { opacity: 1; }
+.subtask .del:hover { color: var(--red); }
+.subtask-add {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.subtask-add input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--card);
+  color: var(--text);
+}
+.subtask-add input:focus { outline: none; border-color: var(--accent); }
+
+/* History inside task */
+.history { display: flex; flex-direction: column; }
+.history-item {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  gap: 10px;
+}
+.history-item:last-child { border-bottom: none; }
+.history-time {
+  color: var(--text-light);
+  font-size: 11px;
+  flex-shrink: 0;
+  width: 90px;
+}
+.history-text { flex: 1; word-break: break-word; }
+.history-text strong { color: var(--text); font-weight: 500; }
+
+.btn-danger {
+  color: var(--red);
+  margin-top: 22px;
+}
+.btn-danger:hover { background: var(--red-soft); border-color: var(--red-soft); }
+
+/* Weekly history view */
+.history-day { margin-bottom: 22px; }
+.history-day-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.history-day-count {
+  font-size: 12px;
+  color: var(--text-light);
+  font-weight: 400;
+  margin-left: 6px;
+}
+
+/* Modal for project add */
+.mini-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--card);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  z-index: 60;
+  padding: 20px;
+  width: 320px;
+  max-width: 90vw;
+}
+.mini-modal h3 { font-size: 15px; margin-bottom: 12px; }
+.mini-modal input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  margin-bottom: 12px;
+  background: var(--card);
+  color: var(--text);
+}
+.mini-modal input:focus { outline: none; border-color: var(--accent); }
+.color-picker {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.color-opt {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+.color-opt.selected { border-color: var(--text); }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* Toast (undo) */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--text);
+  color: var(--bg);
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: var(--shadow-lg);
+  z-index: 70;
+  opacity: 0;
+  pointer-events: none;
+  transition: 0.2s;
+}
+.toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+.toast button {
+  background: transparent;
+  color: inherit;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0;
+  text-decoration: underline;
+}
+
+/* Help overlay */
+.help-modal kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--gray-soft);
+  border: 1px solid var(--border);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--text);
+}
+.help-modal .row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.help-modal .row:last-child { border-bottom: none; }
+.help-modal .keys { display: flex; gap: 4px; }
+
+@media (max-width: 600px) {
+  .app { padding: 20px 14px 60px; }
+  .panel { width: 100%; }
+  .header { flex-direction: column; align-items: flex-start; }
+}
+
+/* ===== Mobile / PWA ===== */
+.bottom-bar { display: none; }
+.fab { display: none; }
+.pull-indicator { display: none; }
+
+@media (max-width: 700px) {
+  .app {
+    padding-top: max(20px, env(safe-area-inset-top));
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(14px, env(safe-area-inset-right));
+  }
+
+  .header h1 { font-size: 20px; }
+  .header { gap: 8px; margin-bottom: 12px; }
+  .header-right .stats { display: none; }
+  .header-right .icon-btn { padding: 8px 10px; font-size: 14px; }
+
+  .tabs { display: none; }
+
+  /* Hide top filter clutter; surface via bottom bar */
+  .filters { gap: 6px; }
+  .filters .toggle { font-size: 12px; }
+
+  /* Big touch targets */
+  .task { padding: 14px; gap: 14px; }
+  .task .title { font-size: 15px; }
+  .check { width: 24px; height: 24px; }
+  .tag { font-size: 11px; padding: 3px 8px; }
+
+  .add-task {
+    position: fixed;
+    left: 12px; right: 12px;
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    z-index: 30;
+    margin-bottom: 0;
+    border-radius: 14px;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(120%);
+    transition: transform 0.25s ease;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px;
+    gap: 10px;
+  }
+  .add-task.open { transform: translateY(0); }
+  .add-task input[type="text"] { font-size: 16px; }
+  .add-task select, .add-task input[type="datetime-local"] { width: 100%; padding: 10px 12px; font-size: 14px; }
+  .add-task .btn-primary { padding: 12px; font-size: 15px; }
+
+  /* Bottom tab bar */
+  .bottom-bar {
+    display: flex;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    background: color-mix(in srgb, var(--card) 92%, transparent);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 40;
+  }
+  .bottom-bar .bb-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 10px 4px 8px;
+    color: var(--text-muted);
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    cursor: pointer;
+  }
+  .bottom-bar .bb-tab .ico { font-size: 22px; line-height: 1; }
+  .bottom-bar .bb-tab.active { color: var(--accent); }
+
+  /* FAB */
+  .fab {
+    display: flex;
+    position: fixed;
+    right: 20px;
+    bottom: calc(72px + env(safe-area-inset-bottom));
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    border: none;
+    font-size: 28px;
+    box-shadow: 0 6px 20px rgba(121,110,255,0.45);
+    z-index: 35;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .fab:active { transform: scale(0.93); }
+
+  /* Full-screen drawer */
+  .panel {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 18px 18px 0 0;
+    height: 92%;
+    top: auto;
+    bottom: 0;
+    animation: slideUp 0.25s ease;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .panel-header { padding: 12px 16px; }
+  .panel-header::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px; height: 4px;
+    background: var(--text-light);
+    border-radius: 2px;
+    opacity: 0.5;
+  }
+  .panel-header { position: relative; padding-top: 16px; }
+  .panel-body { padding: 14px 16px 24px; }
+  .title-input { font-size: 17px; }
+  .field label { width: 88px; }
+  .desc, .desc-preview { font-size: 14px; }
+
+  /* Swipe layer wrapper for tasks */
+  .task-swipe {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius);
+  }
+  .task-swipe .swipe-action {
+    position: absolute;
+    top: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 22px;
+    font-weight: 600;
+    width: 80px;
+    pointer-events: none;
+  }
+  .task-swipe .swipe-left { right: 0; background: var(--red); }
+  .task-swipe .swipe-right { left: 0; background: var(--green); }
+  .task-swipe .task {
+    position: relative;
+    z-index: 1;
+    transition: transform 0.25s;
+    will-change: transform;
+  }
+  .task-swipe.swiping .task { transition: none; }
+
+  /* Pull-to-refresh indicator */
+  .pull-indicator {
+    display: flex;
+    position: fixed;
+    top: env(safe-area-inset-top);
+    left: 50%;
+    transform: translate(-50%, -120%);
+    background: var(--accent);
+    color: white;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    box-shadow: var(--shadow-md);
+    z-index: 100;
+    transition: transform 0.2s ease;
+    pointer-events: none;
+  }
+  .pull-indicator.pulling { transform: translate(-50%, calc(var(--pull-y, 20px))); }
+  .pull-indicator.refreshing { transform: translate(-50%, 14px); animation: spin 0.8s linear infinite; }
+  @keyframes spin { from { transform: translate(-50%, 14px) rotate(0deg); } to { transform: translate(-50%, 14px) rotate(360deg); } }
+
+  /* Banner more compact */
+  .banner { font-size: 12px; padding: 8px 12px; }
+}
+
+/* Compact filters menu (mobile) */
+.filters-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.18);
+  z-index: 45;
+}
+.filters-sheet {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: 0;
+  background: var(--card);
+  border-radius: 18px 18px 0 0;
+  padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+  z-index: 46;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: slideUp 0.25s ease;
+}
+.filters-sheet h3 { font-size: 15px; margin-bottom: 6px; }
+.filters-sheet label { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-muted); }
+.filters-sheet label > span { width: 110px; flex-shrink: 0; }
+.filters-sheet select { flex: 1; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div>
+      <h1>Мой ежедневник</h1>
+      <div class="date" id="todayDate"></div>
+    </div>
+    <div class="header-right">
+      <div class="stats" id="stats"></div>
+      <button class="icon-btn" id="themeBtn" title="Переключить тему" aria-label="Переключить тему"></button>
+      <button class="icon-btn" id="tgBtn" title="Написать @DGerman11 в Telegram" aria-label="Написать в Telegram">✈ Telegram</button>
+      <button class="icon-btn" id="exportBtn" title="Экспорт данных в JSON">⤓ Экспорт</button>
+      <button class="icon-btn" id="importBtn" title="Импорт из JSON">⤒ Импорт</button>
+      <button class="icon-btn" id="helpBtn" title="Горячие клавиши (?)">?</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+    </div>
+  </div>
+
+  <div id="overdueBanner" hidden></div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="tasks" role="tab">Задачи</button>
+    <button class="tab" data-tab="history" role="tab">Сделано за неделю</button>
+  </div>
+
+  <div id="view-tasks">
+    <div class="projects-bar" id="projectsBar"></div>
+
+    <div class="filters">
+      <input type="text" class="search" id="search" placeholder="Поиск по задачам... (⌘K)" aria-label="Поиск">
+      <select id="group" aria-label="Группировка">
+        <option value="none">Без группировки</option>
+        <option value="date">По дате</option>
+        <option value="project">По проекту</option>
+        <option value="priority">По приоритету</option>
+      </select>
+      <select id="sort" aria-label="Сортировка">
+        <option value="deadline">По дедлайну</option>
+        <option value="priority">По приоритету</option>
+        <option value="created">По дате создания</option>
+        <option value="manual">Вручную (drag)</option>
+      </select>
+      <select id="filterStatus" aria-label="Статус">
+        <option value="all">Все статусы</option>
+        <option value="todo">К выполнению</option>
+        <option value="progress">В процессе</option>
+        <option value="done">Сделано</option>
+      </select>
+      <select id="filterPriority" aria-label="Приоритет">
+        <option value="all">Любой приоритет</option>
+        <option value="high">Высокий</option>
+        <option value="medium">Средний</option>
+        <option value="low">Низкий</option>
+      </select>
+      <label class="toggle">
+        <input type="checkbox" id="showDone"> Показать сделанные
+      </label>
+    </div>
+
+    <form class="add-task" id="addForm">
+      <input type="text" id="newTitle" placeholder="Новая задача — название и Enter (⌘N — фокус)" required autocomplete="off">
+      <select id="newProject" aria-label="Проект"></select>
+      <select id="newPriority" aria-label="Приоритет">
+        <option value="low">Низкий</option>
+        <option value="medium" selected>Средний</option>
+        <option value="high">Высокий</option>
+      </select>
+      <input type="datetime-local" id="newDeadline" aria-label="Дедлайн">
+      <button type="submit" class="btn btn-primary">Добавить</button>
+    </form>
+
+    <div id="taskList"></div>
+  </div>
+
+  <div id="view-history" hidden>
+    <div id="historyView"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span class="msg"></span>
+  <button class="action">Отменить</button>
+</div>
+
+<div class="pull-indicator" id="pullIndicator" aria-hidden="true">↓</div>
+
+<button class="fab" id="fab" aria-label="Добавить задачу">+</button>
+
+<nav class="bottom-bar" id="bottomBar" aria-label="Навигация">
+  <button class="bb-tab active" data-bb="tasks"><span class="ico">✓</span><span>Задачи</span></button>
+  <button class="bb-tab" data-bb="filters"><span class="ico">⚙</span><span>Фильтры</span></button>
+  <button class="bb-tab" data-bb="history"><span class="ico">📅</span><span>История</span></button>
+  <button class="bb-tab" data-bb="more"><span class="ico">⋯</span><span>Ещё</span></button>
+</nav>
+
+<script>
+// ===== State & persistence =====
+const STORAGE_KEY = 'asana-lite-v1';
+const DEFAULT_PROJECTS = [
+  { id: 'p1', name: 'Личное', color: '#796eff' },
+  { id: 'p2', name: 'Работа', color: '#14a085' },
+  { id: 'p3', name: 'Идеи', color: '#f5a623' }
+];
+const COLORS = ['#796eff', '#f06a6a', '#14a085', '#4573d2', '#f5a623', '#9b59b6', '#34495e'];
+
+const state = loadState();
+let openTaskId = null; // not persisted
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return migrate(JSON.parse(raw));
+  } catch (e) {}
+  return defaultState();
+}
+
+function defaultState() {
+  return {
+    tasks: [],
+    projects: DEFAULT_PROJECTS.slice(),
+    filter: { project: 'all', status: 'all', priority: 'all', search: '', showDone: false },
+    sort: 'deadline',
+    group: 'none',
+    view: 'tasks',
+    overdueDismissed: null,
+    theme: 'auto'
+  };
+}
+
+function migrate(s) {
+  s = Object.assign(defaultState(), s);
+  s.filter = Object.assign(defaultState().filter, s.filter || {});
+  if (!Array.isArray(s.projects) || s.projects.length === 0) s.projects = DEFAULT_PROJECTS.slice();
+  if (!Array.isArray(s.tasks)) s.tasks = [];
+  s.tasks.forEach(t => {
+    if (!t.history) t.history = [];
+    if (!t.subtasks) t.subtasks = [];
+    if (!('description' in t)) t.description = '';
+  });
+  return s;
+}
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function uid() { return Math.random().toString(36).slice(2, 10); }
+function now() { return Date.now(); }
+
+// ===== Date utils =====
+function parseDeadline(s) {
+  if (!s) return null;
+  if (s.includes('T')) return new Date(s);
+  return new Date(s + 'T00:00:00');
+}
+function hasTime(s) { return !!s && s.includes('T'); }
+function startOfDay(d) { const x = new Date(d); x.setHours(0,0,0,0); return x; }
+function isToday(s) {
+  if (!s) return false;
+  return startOfDay(parseDeadline(s)).getTime() === startOfDay(new Date()).getTime();
+}
+function isTomorrow(s) {
+  if (!s) return false;
+  const t = startOfDay(new Date()); t.setDate(t.getDate() + 1);
+  return startOfDay(parseDeadline(s)).getTime() === t.getTime();
+}
+function isThisWeek(s) {
+  if (!s) return false;
+  const d = startOfDay(parseDeadline(s));
+  const today = startOfDay(new Date());
+  const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
+  return d >= today && d < weekEnd;
+}
+function isOverdue(s) {
+  if (!s) return false;
+  const d = parseDeadline(s);
+  if (hasTime(s)) return d < new Date();
+  return startOfDay(d) < startOfDay(new Date());
+}
+function formatDeadline(s) {
+  if (!s) return '';
+  const d = parseDeadline(s);
+  const today = startOfDay(new Date());
+  const diff = Math.round((startOfDay(d) - today) / 86400000);
+  let day;
+  if (diff === 0) day = 'Сегодня';
+  else if (diff === 1) day = 'Завтра';
+  else if (diff === -1) day = 'Вчера';
+  else if (diff > 0 && diff < 7) day = `Через ${diff} дн.`;
+  else if (diff < 0 && diff > -7) day = `${-diff} дн. назад`;
+  else day = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+  if (hasTime(s)) {
+    const t = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    if (t !== '00:00') return `${day}, ${t}`;
+  }
+  return day;
+}
+function formatDateTime(ts) {
+  const d = new Date(ts);
+  return d.toLocaleString('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+function formatDayLong(d) {
+  return d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+function todayKey() { return new Date().toISOString().slice(0, 10); }
+
+// ===== Labels =====
+const STATUS_LABEL = { todo: 'К выполнению', progress: 'В процессе', done: 'Сделано' };
+const PRIORITY_LABEL = { low: 'Низкий', medium: 'Средний', high: 'Высокий' };
+const PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
+
+// ===== Mutations =====
+function logEvent(task, kind, args) {
+  task.history.push({ ts: now(), kind, args: args || {} });
+}
+
+function renderEvent(h) {
+  if (h.text && !h.kind) return h.text; // legacy
+  const a = h.args || {};
+  switch (h.kind) {
+    case 'created': return 'Задача создана';
+    case 'status': return `Статус: ${esc(STATUS_LABEL[a.from] || a.from)} → <strong>${esc(STATUS_LABEL[a.to] || a.to)}</strong>`;
+    case 'priority': return `Приоритет: ${esc(PRIORITY_LABEL[a.from] || a.from)} → <strong>${esc(PRIORITY_LABEL[a.to] || a.to)}</strong>`;
+    case 'deadline': return `Дедлайн: <strong>${a.to ? esc(formatDeadline(a.to)) : 'снят'}</strong>`;
+    case 'project': {
+      const p = state.projects.find(x => x.id === a.to);
+      return `Проект: <strong>${esc(p ? p.name : '—')}</strong>`;
+    }
+    case 'title': return 'Название изменено';
+    case 'description': return 'Описание обновлено';
+    case 'subtask-added': return `Добавлена подзадача: <strong>${esc(a.title)}</strong>`;
+    case 'subtask-done': return `Подзадача «${esc(a.title)}» — <strong>сделана</strong>`;
+    case 'subtask-undone': return `Подзадача «${esc(a.title)}» возвращена в работу`;
+    case 'subtask-deleted': return `Удалена подзадача: ${esc(a.title)}`;
+    default: return esc(h.kind || '');
+  }
+}
+
+function addTask({ title, project, priority, deadline }) {
+  const task = {
+    id: uid(),
+    title: title.trim(),
+    description: '',
+    status: 'todo',
+    project,
+    priority,
+    deadline: deadline || null,
+    createdAt: now(),
+    completedAt: null,
+    subtasks: [],
+    history: []
+  };
+  logEvent(task, 'created');
+  state.tasks.unshift(task);
+  save();
+  return task;
+}
+
+function deleteTaskWithUndo(id) {
+  const idx = state.tasks.findIndex(t => t.id === id);
+  if (idx === -1) return;
+  const task = state.tasks[idx];
+  state.tasks.splice(idx, 1);
+  if (openTaskId === id) openTaskId = null;
+  save();
+  pushUndo('Задача удалена', () => {
+    state.tasks.splice(idx, 0, task);
+    save();
+  });
+}
+
+function setStatus(task, status) {
+  if (task.status === status) return;
+  const old = task.status;
+  task.status = status;
+  task.completedAt = status === 'done' ? now() : null;
+  logEvent(task, 'status', { from: old, to: status });
+  save();
+}
+
+function setPriority(task, value) {
+  if (task.priority === value) return;
+  const old = task.priority;
+  task.priority = value;
+  logEvent(task, 'priority', { from: old, to: value });
+  save();
+}
+
+function setDeadline(task, value) {
+  if (task.deadline === value) return;
+  task.deadline = value || null;
+  logEvent(task, 'deadline', { to: task.deadline });
+  save();
+}
+
+function setProject(task, value) {
+  if (task.project === value) return;
+  task.project = value;
+  logEvent(task, 'project', { to: value });
+  save();
+}
+
+function setTitle(task, value) {
+  const v = value.trim();
+  if (!v || v === task.title) return;
+  task.title = v;
+  logEvent(task, 'title');
+  save();
+}
+
+function setDescription(task, value) {
+  if (value === task.description) return;
+  task.description = value;
+  logEvent(task, 'description');
+  save();
+}
+
+function addSubtask(task, title) {
+  if (!title.trim()) return;
+  task.subtasks.push({ id: uid(), title: title.trim(), done: false });
+  logEvent(task, 'subtask-added', { title: title.trim() });
+  save();
+}
+
+function toggleSubtask(task, subId) {
+  const s = task.subtasks.find(x => x.id === subId);
+  if (!s) return;
+  s.done = !s.done;
+  logEvent(task, s.done ? 'subtask-done' : 'subtask-undone', { title: s.title });
+  save();
+}
+
+function deleteSubtask(task, subId) {
+  const s = task.subtasks.find(x => x.id === subId);
+  if (!s) return;
+  task.subtasks = task.subtasks.filter(x => x.id !== subId);
+  logEvent(task, 'subtask-deleted', { title: s.title });
+  save();
+}
+
+function renameSubtask(task, subId, title) {
+  const s = task.subtasks.find(x => x.id === subId);
+  if (!s || s.title === title.trim() || !title.trim()) return;
+  s.title = title.trim();
+  save();
+}
+
+function addProject(name, color) {
+  state.projects.push({ id: uid(), name: name.trim(), color });
+  save();
+}
+
+function deleteProject(id) {
+  if (state.projects.length <= 1) { alert('Должен остаться хотя бы один проект'); return; }
+  if (!confirm('Удалить проект? Задачи в нём будут перенесены в первый оставшийся.')) return;
+  state.projects = state.projects.filter(p => p.id !== id);
+  const fallback = state.projects[0].id;
+  state.tasks.forEach(t => { if (t.project === id) t.project = fallback; });
+  if (state.filter.project === id) state.filter.project = 'all';
+  save();
+}
+
+function moveTask(srcId, targetId, position) {
+  if (srcId === targetId) return;
+  const src = state.tasks.find(t => t.id === srcId);
+  if (!src) return;
+  state.tasks = state.tasks.filter(t => t.id !== srcId);
+  let idx = state.tasks.findIndex(t => t.id === targetId);
+  if (idx === -1) { state.tasks.push(src); save(); return; }
+  if (position === 'after') idx += 1;
+  state.tasks.splice(idx, 0, src);
+  save();
+}
+
+// ===== Filtering & sorting =====
+function visibleTasks() {
+  const f = state.filter;
+  let list = state.tasks.filter(t => {
+    if (f.project !== 'all' && t.project !== f.project) return false;
+    if (f.status !== 'all' && t.status !== f.status) return false;
+    if (f.priority !== 'all' && t.priority !== f.priority) return false;
+    if (f.search) {
+      const q = f.search.toLowerCase();
+      if (!t.title.toLowerCase().includes(q) && !(t.description || '').toLowerCase().includes(q)) return false;
+    }
+    if (!f.showDone && t.status === 'done' && f.status !== 'done') return false;
+    return true;
+  });
+  if (state.sort === 'manual') return list; // preserve state.tasks order
+  list.sort((a, b) => {
+    if ((a.status === 'done') !== (b.status === 'done')) return a.status === 'done' ? 1 : -1;
+    if (state.sort === 'deadline') {
+      if (!a.deadline && !b.deadline) return b.createdAt - a.createdAt;
+      if (!a.deadline) return 1;
+      if (!b.deadline) return -1;
+      return a.deadline.localeCompare(b.deadline);
+    }
+    if (state.sort === 'priority') {
+      const r = PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
+      if (r !== 0) return r;
+      return b.createdAt - a.createdAt;
+    }
+    return b.createdAt - a.createdAt;
+  });
+  return list;
+}
+
+function groupTasks(tasks) {
+  const mode = state.group;
+  if (mode === 'none') return [{ key: '_', label: '', tasks }];
+  if (mode === 'date') {
+    const buckets = {
+      overdue: { key: 'overdue', label: 'Просрочено', tasks: [], order: 0, danger: true },
+      today: { key: 'today', label: 'Сегодня', tasks: [], order: 1 },
+      week:  { key: 'week',  label: 'На этой неделе', tasks: [], order: 2 },
+      later: { key: 'later', label: 'Позже', tasks: [], order: 3 },
+      none:  { key: 'none',  label: 'Без даты', tasks: [], order: 4 }
+    };
+    for (const t of tasks) {
+      if (!t.deadline) buckets.none.tasks.push(t);
+      else if (t.status !== 'done' && isOverdue(t.deadline)) buckets.overdue.tasks.push(t);
+      else if (isToday(t.deadline)) buckets.today.tasks.push(t);
+      else if (isThisWeek(t.deadline)) buckets.week.tasks.push(t);
+      else buckets.later.tasks.push(t);
+    }
+    return Object.values(buckets).filter(b => b.tasks.length > 0).sort((a,b) => a.order - b.order);
+  }
+  if (mode === 'project') {
+    const groups = new Map();
+    for (const p of state.projects) groups.set(p.id, { key: p.id, label: p.name, color: p.color, tasks: [] });
+    for (const t of tasks) {
+      const g = groups.get(t.project);
+      if (g) g.tasks.push(t);
+    }
+    return [...groups.values()].filter(g => g.tasks.length > 0);
+  }
+  if (mode === 'priority') {
+    const order = ['high', 'medium', 'low'];
+    const groups = order.map(p => ({ key: p, label: PRIORITY_LABEL[p], tasks: [] }));
+    for (const t of tasks) {
+      const g = groups.find(x => x.key === t.priority);
+      if (g) g.tasks.push(t);
+    }
+    return groups.filter(g => g.tasks.length > 0);
+  }
+  return [{ key: '_', label: '', tasks }];
+}
+
+// ===== Render =====
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+// Tiny safe markdown
+function md(text) {
+  if (!text) return '';
+  let s = esc(text);
+  s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,!?]|$)/g, '$1<em>$2</em>');
+  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, t, u) => {
+    if (!/^https?:\/\//i.test(u)) return m;
+    return `<a href="${u}" target="_blank" rel="noopener noreferrer">${t}</a>`;
+  });
+  s = s.replace(/^### (.+)$/gm, '<h4>$1</h4>');
+  s = s.replace(/^## (.+)$/gm, '<h3>$1</h3>');
+  s = s.replace(/^# (.+)$/gm, '<h2>$1</h2>');
+  const lines = s.split('\n');
+  const out = [];
+  let inList = false;
+  for (const line of lines) {
+    const m = line.match(/^[-*] (.+)/);
+    if (m) {
+      if (!inList) { out.push('<ul>'); inList = true; }
+      out.push('<li>' + m[1] + '</li>');
+    } else {
+      if (inList) { out.push('</ul>'); inList = false; }
+      out.push(line);
+    }
+  }
+  if (inList) out.push('</ul>');
+  s = out.join('\n');
+  s = s.replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>');
+  s = s.replace(/(<\/(h2|h3|h4|ul)>)<br>/g, '$1');
+  s = s.replace(/<br>(<(h2|h3|h4|ul)>)/g, '$1');
+  return s;
+}
+
+function projectById(id) { return state.projects.find(p => p.id === id); }
+
+function render() {
+  renderHeader();
+  renderOverdueBanner();
+  renderTabs();
+  renderProjectsBar();
+  renderProjectSelect();
+  renderFilters();
+  renderTaskList();
+  renderHistoryView();
+  renderPanel();
+}
+
+function renderTabs() {
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === state.view);
+    t.setAttribute('aria-selected', t.dataset.tab === state.view ? 'true' : 'false');
+  });
+  document.getElementById('view-tasks').hidden = state.view !== 'tasks';
+  document.getElementById('view-history').hidden = state.view !== 'history';
+}
+
+function renderHeader() {
+  document.getElementById('todayDate').textContent = formatDayLong(new Date());
+
+  const open = state.tasks.filter(t => t.status !== 'done').length;
+  const todayDone = state.tasks.filter(t =>
+    t.status === 'done' && t.completedAt &&
+    startOfDay(new Date(t.completedAt)).getTime() === startOfDay(new Date()).getTime()
+  ).length;
+  const overdue = state.tasks.filter(t => t.status !== 'done' && isOverdue(t.deadline)).length;
+  document.getElementById('stats').innerHTML = `
+    <span><strong>${open}</strong> в работе</span>
+    <span><strong>${todayDone}</strong> сделано сегодня</span>
+    ${overdue ? `<span style="color:var(--red)"><strong>${overdue}</strong> просрочено</span>` : ''}
+  `;
+}
+
+function renderOverdueBanner() {
+  const banner = document.getElementById('overdueBanner');
+  const overdue = state.tasks.filter(t => t.status !== 'done' && isOverdue(t.deadline));
+  if (overdue.length === 0 || state.overdueDismissed === todayKey()) {
+    banner.hidden = true;
+    return;
+  }
+  banner.hidden = false;
+  banner.className = 'banner';
+  banner.innerHTML = `
+    <span>⚠</span>
+    <span><strong>${overdue.length}</strong> ${pluralize(overdue.length, 'просроченная задача', 'просроченные задачи', 'просроченных задач')} требуют внимания</span>
+    <button id="dismissOverdue" title="Скрыть до завтра" aria-label="Скрыть">×</button>
+  `;
+  banner.querySelector('#dismissOverdue').addEventListener('click', () => {
+    state.overdueDismissed = todayKey();
+    save();
+    banner.hidden = true;
+  });
+}
+
+function pluralize(n, one, few, many) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
+}
+
+function renderProjectsBar() {
+  const bar = document.getElementById('projectsBar');
+  let html = `<button class="project-chip ${state.filter.project === 'all' ? 'active' : ''}" data-project="all">Все</button>`;
+  for (const p of state.projects) {
+    html += `<button class="project-chip ${state.filter.project === p.id ? 'active' : ''}" data-project="${p.id}">
+      <span class="dot" style="background:${p.color}"></span>${esc(p.name)}
+      <span class="del" data-del-project="${p.id}" title="Удалить проект">×</span>
+    </button>`;
+  }
+  html += `<button class="project-chip project-add" id="addProjectBtn">+ Проект</button>`;
+  bar.innerHTML = html;
+
+  bar.querySelectorAll('[data-project]').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.dataset.delProject) return;
+      state.filter.project = el.dataset.project;
+      save();
+      renderProjectsBar();
+      renderTaskList();
+    });
+  });
+  bar.querySelectorAll('[data-del-project]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      deleteProject(el.dataset.delProject);
+      render();
+    });
+  });
+  document.getElementById('addProjectBtn').addEventListener('click', openAddProjectModal);
+}
+
+function renderProjectSelect() {
+  const sel = document.getElementById('newProject');
+  const cur = sel.value;
+  sel.innerHTML = state.projects.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  if (cur && state.projects.find(p => p.id === cur)) sel.value = cur;
+}
+
+function renderFilters() {
+  document.getElementById('search').value = state.filter.search;
+  document.getElementById('filterStatus').value = state.filter.status;
+  document.getElementById('filterPriority').value = state.filter.priority;
+  document.getElementById('sort').value = state.sort;
+  document.getElementById('group').value = state.group;
+  document.getElementById('showDone').checked = state.filter.showDone;
+}
+
+function renderTaskList() {
+  const list = visibleTasks();
+  const root = document.getElementById('taskList');
+  if (list.length === 0) {
+    root.innerHTML = `<div class="empty">
+      <div class="icon">📭</div>
+      <div>Задач не найдено</div>
+      <div style="font-size:12px;margin-top:4px">Добавьте первую задачу выше или измените фильтры</div>
+    </div>`;
+    return;
+  }
+  const groups = groupTasks(list);
+  const dnd = state.sort === 'manual' && state.group === 'none';
+  let html = '';
+  for (const g of groups) {
+    const headerCls = g.danger ? 'group-header group-overdue' : 'group-header';
+    const header = state.group === 'none' ? '' :
+      `<div class="${headerCls}">${g.color ? `<span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${g.color}"></span> ` : ''}${esc(g.label)}<span class="count">${g.tasks.length}</span></div>`;
+    html += `<div class="task-group">
+      ${header}
+      <div class="task-list" data-group="${esc(g.key)}">
+        ${g.tasks.map(t => taskHtml(t, dnd)).join('')}
+      </div>
+    </div>`;
+  }
+  root.innerHTML = html;
+
+  root.querySelectorAll('.task').forEach(el => attachTaskHandlers(el, dnd));
+}
+
+function taskHtml(t, draggable) {
+  const project = projectById(t.project);
+  const sub = t.subtasks;
+  const subDone = sub.filter(s => s.done).length;
+  const deadlineCls = !t.deadline ? '' :
+    t.status === 'done' ? 'tag-deadline-future' :
+    isOverdue(t.deadline) ? 'tag-deadline-overdue' :
+    isToday(t.deadline) ? 'tag-deadline-today' : 'tag-deadline-future';
+  return `<div class="task ${t.status === 'done' ? 'done' : ''} ${draggable ? 'draggable' : ''}" data-id="${t.id}" ${draggable ? 'draggable="true"' : ''}>
+    <button class="check ${t.status === 'done' ? 'checked' : ''}" title="Отметить сделанным" aria-label="Отметить сделанным" aria-pressed="${t.status === 'done'}"></button>
+    <div class="body">
+      <div class="title" title="Двойной клик — переименовать">${esc(t.title)}</div>
+      <div class="meta">
+        <span class="tag tag-status-${t.status}">${STATUS_LABEL[t.status]}</span>
+        ${project ? `<span class="tag tag-project"><span class="dot" style="background:${project.color}"></span>${esc(project.name)}</span>` : ''}
+        <span class="tag tag-prio-${t.priority}">${PRIORITY_LABEL[t.priority]}</span>
+        ${t.deadline ? `<span class="tag ${deadlineCls}">📅 ${esc(formatDeadline(t.deadline))}</span>` : ''}
+        ${sub.length ? `<span>☑ ${subDone}/${sub.length}</span>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function attachTaskHandlers(el, draggable) {
+  const id = el.dataset.id;
+  el.addEventListener('click', e => {
+    if (e.target.closest('.check')) return;
+    if (el.querySelector('.title.editing')) return;
+    openTask(id);
+  });
+  el.querySelector('.check').addEventListener('click', e => {
+    e.stopPropagation();
+    const task = state.tasks.find(t => t.id === id);
+    if (!task) return;
+    setStatus(task, task.status === 'done' ? 'todo' : 'done');
+    renderHeader();
+    renderOverdueBanner();
+    renderTaskList();
+  });
+
+  // Inline title edit
+  const titleEl = el.querySelector('.title');
+  titleEl.addEventListener('dblclick', e => {
+    e.stopPropagation();
+    startInlineEdit(titleEl, id);
+  });
+
+  // Drag-and-drop
+  if (draggable) {
+    el.addEventListener('dragstart', e => {
+      dragId = id;
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', id); } catch (_) {}
+      el.classList.add('dragging');
+    });
+    el.addEventListener('dragend', () => {
+      dragId = null;
+      el.classList.remove('dragging');
+      document.querySelectorAll('.drop-above,.drop-below').forEach(x => x.classList.remove('drop-above', 'drop-below'));
+    });
+    el.addEventListener('dragover', e => {
+      if (!dragId || dragId === id) return;
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const above = (e.clientY - rect.top) < rect.height / 2;
+      el.classList.toggle('drop-above', above);
+      el.classList.toggle('drop-below', !above);
+    });
+    el.addEventListener('dragleave', () => {
+      el.classList.remove('drop-above', 'drop-below');
+    });
+    el.addEventListener('drop', e => {
+      e.preventDefault();
+      if (!dragId || dragId === id) return;
+      const rect = el.getBoundingClientRect();
+      const above = (e.clientY - rect.top) < rect.height / 2;
+      moveTask(dragId, id, above ? 'before' : 'after');
+      dragId = null;
+      renderTaskList();
+    });
+  }
+}
+
+let dragId = null;
+
+function startInlineEdit(titleEl, id) {
+  const task = state.tasks.find(t => t.id === id);
+  if (!task) return;
+  titleEl.contentEditable = 'true';
+  titleEl.classList.add('editing');
+  titleEl.dataset.original = task.title;
+  titleEl.focus();
+  const range = document.createRange();
+  range.selectNodeContents(titleEl);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+
+  const finish = (commit) => {
+    titleEl.contentEditable = 'false';
+    titleEl.classList.remove('editing');
+    if (commit) {
+      const newTitle = titleEl.textContent.trim();
+      if (newTitle && newTitle !== task.title) {
+        setTitle(task, newTitle);
+        renderTaskList();
+        renderHeader();
+        if (openTaskId === id) renderPanel();
+      } else {
+        titleEl.textContent = task.title;
+      }
+    } else {
+      titleEl.textContent = titleEl.dataset.original || task.title;
+    }
+  };
+  titleEl.addEventListener('keydown', function onKey(e) {
+    if (e.key === 'Enter') { e.preventDefault(); titleEl.removeEventListener('keydown', onKey); finish(true); titleEl.blur(); }
+    else if (e.key === 'Escape') { e.preventDefault(); titleEl.removeEventListener('keydown', onKey); finish(false); titleEl.blur(); }
+  });
+  titleEl.addEventListener('blur', function onBlur() {
+    titleEl.removeEventListener('blur', onBlur);
+    if (titleEl.contentEditable === 'true') finish(true);
+  });
+}
+
+// ===== Drawer / panel =====
+function openTask(id) {
+  openTaskId = id;
+  renderPanel();
+}
+
+function closePanel() {
+  openTaskId = null;
+  renderPanel();
+}
+
+function renderPanel() {
+  const existing = document.getElementById('panelOverlay');
+  if (existing) existing.remove();
+  const ex2 = document.getElementById('panel');
+  if (ex2) ex2.remove();
+
+  if (!openTaskId) return;
+  const task = state.tasks.find(t => t.id === openTaskId);
+  if (!task) { openTaskId = null; return; }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'panelOverlay';
+  overlay.className = 'overlay';
+  overlay.addEventListener('click', closePanel);
+  document.body.appendChild(overlay);
+
+  const panel = document.createElement('div');
+  panel.id = 'panel';
+  panel.className = 'panel';
+  panel.setAttribute('role', 'dialog');
+  panel.setAttribute('aria-modal', 'true');
+  panel.setAttribute('aria-label', 'Карточка задачи');
+  panel.innerHTML = panelHtml(task);
+  document.body.appendChild(panel);
+
+  wirePanel(panel, task);
+}
+
+function wirePanel(panel, task) {
+  panel.querySelector('.panel-close').addEventListener('click', closePanel);
+
+  const panelCheck = panel.querySelector('#panelCheck');
+  panelCheck.addEventListener('click', () => {
+    setStatus(task, task.status === 'done' ? 'todo' : 'done');
+    renderHeader();
+    renderOverdueBanner();
+    renderTaskList();
+    renderPanel();
+  });
+
+  const titleInput = panel.querySelector('.title-input');
+  titleInput.addEventListener('blur', () => {
+    const v = titleInput.value.trim();
+    if (v && v !== task.title) {
+      setTitle(task, v);
+      renderTaskList();
+      renderHeader();
+    }
+  });
+  titleInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); titleInput.blur(); }
+  });
+
+  panel.querySelector('[data-field="status"]').addEventListener('change', e => {
+    setStatus(task, e.target.value);
+    renderHeader(); renderOverdueBanner(); renderTaskList();
+    refreshPanelHeader(panel, task);
+  });
+  panel.querySelector('[data-field="project"]').addEventListener('change', e => {
+    setProject(task, e.target.value);
+    renderTaskList();
+    refreshPanelHeader(panel, task);
+  });
+  panel.querySelector('[data-field="priority"]').addEventListener('change', e => {
+    setPriority(task, e.target.value);
+    renderTaskList();
+  });
+
+  // Deadline date + time
+  const dateInp = panel.querySelector('[data-field="deadline-date"]');
+  const timeInp = panel.querySelector('[data-field="deadline-time"]');
+  const updateDeadline = () => {
+    const date = dateInp.value;
+    const time = timeInp.value;
+    let val = null;
+    if (date && time) val = `${date}T${time}`;
+    else if (date) val = date;
+    setDeadline(task, val);
+    renderHeader(); renderOverdueBanner(); renderTaskList();
+  };
+  dateInp.addEventListener('change', updateDeadline);
+  timeInp.addEventListener('change', updateDeadline);
+
+  // Description: edit-mode toggle
+  const descPreview = panel.querySelector('.desc-preview');
+  const desc = panel.querySelector('.desc');
+  descPreview.addEventListener('click', () => {
+    descPreview.style.display = 'none';
+    desc.style.display = 'block';
+    desc.focus();
+  });
+  desc.addEventListener('blur', () => {
+    if (desc.value !== task.description) {
+      setDescription(task, desc.value);
+    }
+    desc.style.display = 'none';
+    descPreview.style.display = 'block';
+    descPreview.innerHTML = task.description ? md(task.description) : '<span class="placeholder">Заметки, контекст, ссылки... Поддерживается markdown (**жирный**, *курсив*, `код`, [ссылка](url), # заголовки, - списки)</span>';
+  });
+
+  // subtasks
+  panel.querySelectorAll('.subtask').forEach(el => {
+    const sid = el.dataset.sid;
+    el.querySelector('input[type="checkbox"]').addEventListener('change', () => {
+      toggleSubtask(task, sid);
+      renderTaskList();
+      renderPanelSubtasks(panel, task);
+    });
+    const txt = el.querySelector('.text');
+    txt.addEventListener('blur', () => renameSubtask(task, sid, txt.value));
+    txt.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); txt.blur(); }});
+    el.querySelector('.del').addEventListener('click', () => {
+      deleteSubtask(task, sid);
+      renderTaskList();
+      renderPanelSubtasks(panel, task);
+    });
+  });
+
+  const subForm = panel.querySelector('.subtask-add');
+  subForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const inp = subForm.querySelector('input');
+    if (inp.value.trim()) {
+      addSubtask(task, inp.value);
+      inp.value = '';
+      renderTaskList();
+      renderPanelSubtasks(panel, task);
+      panel.querySelector('.subtask-add input').focus();
+    }
+  });
+
+  panel.querySelector('.btn-danger').addEventListener('click', () => {
+    if (confirm('Удалить задачу? Можно отменить в течение 5 секунд.')) {
+      const id = task.id;
+      closePanel();
+      deleteTaskWithUndo(id);
+      renderTaskList();
+      renderHeader();
+      renderOverdueBanner();
+    }
+  });
+}
+
+function refreshPanelHeader(panel, task) {
+  const project = projectById(task.project);
+  const lbl = panel.querySelector('.panel-header .project-name');
+  if (lbl) lbl.textContent = project ? project.name : '';
+  const check = panel.querySelector('#panelCheck');
+  if (check) check.classList.toggle('checked', task.status === 'done');
+}
+
+function renderPanelSubtasks(panel, task) {
+  const container = panel.querySelector('#subtasksList');
+  if (!container) return;
+  container.innerHTML = subtasksHtml(task);
+  const wrapper = panel.querySelector('.subtasks-wrap');
+  // re-attach
+  panel.querySelectorAll('.subtask').forEach(el => {
+    const sid = el.dataset.sid;
+    el.querySelector('input[type="checkbox"]').addEventListener('change', () => {
+      toggleSubtask(task, sid);
+      renderTaskList();
+      renderPanelSubtasks(panel, task);
+    });
+    const txt = el.querySelector('.text');
+    txt.addEventListener('blur', () => renameSubtask(task, sid, txt.value));
+    txt.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); txt.blur(); }});
+    el.querySelector('.del').addEventListener('click', () => {
+      deleteSubtask(task, sid);
+      renderTaskList();
+      renderPanelSubtasks(panel, task);
+    });
+  });
+  // also update label counter
+  const label = panel.querySelector('#subtaskLabel');
+  if (label) label.innerHTML = task.subtasks.length ? ` <span class="hint">${task.subtasks.filter(s=>s.done).length}/${task.subtasks.length}</span>` : '';
+  // And history (subtask events go there)
+  const hist = panel.querySelector('#historyList');
+  if (hist) hist.innerHTML = historyHtml(task);
+}
+
+function subtasksHtml(task) {
+  return task.subtasks.map(s => `
+    <div class="subtask ${s.done?'done':''}" data-sid="${s.id}">
+      <input type="checkbox" ${s.done?'checked':''} aria-label="Готово">
+      <input class="text" value="${esc(s.title)}" aria-label="Название подзадачи">
+      <button class="del" title="Удалить" aria-label="Удалить подзадачу">×</button>
+    </div>
+  `).join('');
+}
+
+function historyHtml(task) {
+  const items = [...task.history].reverse();
+  if (items.length === 0) return '<div style="color:var(--text-light);font-size:12px;padding:6px 0">Пока пусто</div>';
+  return items.map(h => `
+    <div class="history-item">
+      <span class="history-time">${formatDateTime(h.ts)}</span>
+      <span class="history-text">${renderEvent(h)}</span>
+    </div>
+  `).join('');
+}
+
+function panelHtml(task) {
+  const project = projectById(task.project);
+  const dlDate = task.deadline ? task.deadline.slice(0, 10) : '';
+  const dlTime = hasTime(task.deadline) ? task.deadline.slice(11, 16) : '';
+  const descHtml = task.description ? md(task.description) : '<span class="placeholder">Заметки, контекст, ссылки... Поддерживается markdown (**жирный**, *курсив*, `код`, [ссылка](url), # заголовки, - списки)</span>';
+  return `
+    <div class="panel-header">
+      <div class="left">
+        <button class="check ${task.status === 'done' ? 'checked' : ''}" id="panelCheck" title="Сделать" aria-label="Отметить сделанным"></button>
+        <span class="project-name" style="font-size:13px;color:var(--text-muted)">${project ? esc(project.name) : ''}</span>
+      </div>
+      <button class="panel-close" title="Закрыть (Esc)" aria-label="Закрыть">×</button>
+    </div>
+    <div class="panel-body">
+      <input class="title-input" value="${esc(task.title)}" aria-label="Название" />
+
+      <div style="margin-top:8px">
+        <div class="field">
+          <label>Статус</label>
+          <select data-field="status">
+            ${Object.entries(STATUS_LABEL).map(([k,v]) => `<option value="${k}" ${task.status===k?'selected':''}>${v}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Проект</label>
+          <select data-field="project">
+            ${state.projects.map(p => `<option value="${p.id}" ${task.project===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Приоритет</label>
+          <select data-field="priority">
+            ${Object.entries(PRIORITY_LABEL).map(([k,v]) => `<option value="${k}" ${task.priority===k?'selected':''}>${v}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label>Дедлайн</label>
+          <div class="field-row">
+            <input type="date" data-field="deadline-date" value="${dlDate}" aria-label="Дата">
+            <input type="time" data-field="deadline-time" value="${dlTime}" aria-label="Время">
+          </div>
+        </div>
+      </div>
+
+      <div class="section-label">Описание <span class="hint">markdown</span></div>
+      <div class="desc-preview">${descHtml}</div>
+      <textarea class="desc" style="display:none" placeholder="Заметки, контекст, ссылки...">${esc(task.description || '')}</textarea>
+
+      <div class="section-label">Подзадачи<span id="subtaskLabel">${task.subtasks.length ? ` <span class="hint">${task.subtasks.filter(s=>s.done).length}/${task.subtasks.length}</span>` : ''}</span></div>
+      <div class="subtasks-wrap">
+        <div class="subtasks" id="subtasksList">${subtasksHtml(task)}</div>
+        <form class="subtask-add">
+          <input type="text" placeholder="Добавить подзадачу..." autocomplete="off" aria-label="Новая подзадача">
+          <button type="submit" class="btn">+</button>
+        </form>
+      </div>
+
+      <div class="section-label">История</div>
+      <div class="history" id="historyList">${historyHtml(task)}</div>
+
+      <button class="btn btn-danger">Удалить задачу</button>
+    </div>
+  `;
+}
+
+// ===== History view =====
+function renderHistoryView() {
+  const root = document.getElementById('historyView');
+  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 6); weekAgo.setHours(0,0,0,0);
+
+  const done = state.tasks
+    .filter(t => t.status === 'done' && t.completedAt && t.completedAt >= weekAgo.getTime())
+    .sort((a, b) => b.completedAt - a.completedAt);
+
+  if (done.length === 0) {
+    root.innerHTML = `<div class="empty"><div class="icon">🌱</div><div>За эту неделю пока ничего не завершено</div></div>`;
+    return;
+  }
+
+  const groups = {};
+  done.forEach(t => {
+    const key = new Date(t.completedAt).toISOString().slice(0, 10);
+    (groups[key] = groups[key] || []).push(t);
+  });
+
+  const sortedDays = Object.keys(groups).sort().reverse();
+  let html = '';
+  for (const day of sortedDays) {
+    const d = new Date(day + 'T00:00:00');
+    const tk = todayKey();
+    const yK = (() => { const y = new Date(); y.setDate(y.getDate()-1); return y.toISOString().slice(0, 10); })();
+    let label = formatDayLong(d);
+    if (day === tk) label = 'Сегодня · ' + label;
+    else if (day === yK) label = 'Вчера · ' + label;
+
+    html += `<div class="history-day">
+      <div class="history-day-header">${label}<span class="history-day-count">${groups[day].length}</span></div>
+      <div class="task-list">
+        ${groups[day].map(t => taskHtml(t, false)).join('')}
+      </div>
+    </div>`;
+  }
+  root.innerHTML = html;
+  root.querySelectorAll('.task').forEach(el => attachTaskHandlers(el, false));
+}
+
+// ===== Project add modal =====
+function openAddProjectModal() {
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  let selectedColor = COLORS[0];
+  const modal = document.createElement('div');
+  modal.className = 'mini-modal';
+  modal.innerHTML = `
+    <h3>Новый проект</h3>
+    <input type="text" id="projName" placeholder="Название проекта" autofocus>
+    <div class="color-picker">
+      ${COLORS.map((c, i) => `<div class="color-opt ${i===0?'selected':''}" data-color="${c}" style="background:${c}" role="button" tabindex="0" aria-label="Цвет ${c}"></div>`).join('')}
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="projCancel">Отмена</button>
+      <button class="btn btn-primary" id="projSave">Создать</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.body.appendChild(modal);
+
+  modal.querySelectorAll('.color-opt').forEach(el => {
+    el.addEventListener('click', () => {
+      modal.querySelectorAll('.color-opt').forEach(x => x.classList.remove('selected'));
+      el.classList.add('selected');
+      selectedColor = el.dataset.color;
+    });
+  });
+  const close = () => { overlay.remove(); modal.remove(); };
+  overlay.addEventListener('click', close);
+  modal.querySelector('#projCancel').addEventListener('click', close);
+  const saveProj = () => {
+    const name = modal.querySelector('#projName').value.trim();
+    if (!name) return;
+    addProject(name, selectedColor);
+    close();
+    render();
+  };
+  modal.querySelector('#projSave').addEventListener('click', saveProj);
+  modal.querySelector('#projName').addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveProj();
+    if (e.key === 'Escape') close();
+  });
+  setTimeout(() => modal.querySelector('#projName').focus(), 0);
+}
+
+// ===== Help modal =====
+function openHelpModal() {
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  const modal = document.createElement('div');
+  modal.className = 'mini-modal help-modal';
+  modal.style.width = '420px';
+  const isMac = navigator.platform.toLowerCase().includes('mac');
+  const mod = isMac ? '⌘' : 'Ctrl';
+  modal.innerHTML = `
+    <h3>Горячие клавиши</h3>
+    <div class="row"><span>Поиск</span><span class="keys"><kbd>${mod}</kbd>+<kbd>K</kbd></span></div>
+    <div class="row"><span>Фокус на новую задачу</span><span class="keys"><kbd>${mod}</kbd>+<kbd>N</kbd></span></div>
+    <div class="row"><span>Добавить задачу</span><span class="keys"><kbd>Enter</kbd></span></div>
+    <div class="row"><span>Открыть карточку</span><span class="keys"><kbd>клик</kbd></span></div>
+    <div class="row"><span>Переименовать в списке</span><span class="keys"><kbd>двойной клик</kbd></span></div>
+    <div class="row"><span>Закрыть карточку / отменить</span><span class="keys"><kbd>Esc</kbd></span></div>
+    <div class="row"><span>Приоритет в карточке</span><span class="keys"><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></span></div>
+    <div class="row"><span>Циклить статус в карточке</span><span class="keys"><kbd>S</kbd></span></div>
+    <div class="row"><span>Отменить удаление</span><span class="keys"><kbd>${mod}</kbd>+<kbd>Z</kbd></span></div>
+    <div class="row"><span>Эта справка</span><span class="keys"><kbd>?</kbd></span></div>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn btn-primary" id="helpClose">Понятно</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.body.appendChild(modal);
+  const close = () => { overlay.remove(); modal.remove(); };
+  overlay.addEventListener('click', close);
+  modal.querySelector('#helpClose').addEventListener('click', close);
+  const onKey = e => { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); } };
+  document.addEventListener('keydown', onKey);
+}
+
+// ===== Toast / undo =====
+let undoStack = [];
+let toastTimer = null;
+
+function pushUndo(label, restore) {
+  const entry = { label, restore };
+  undoStack.push(entry);
+  showToast(label, () => {
+    const i = undoStack.indexOf(entry);
+    if (i >= 0) undoStack.splice(i, 1);
+    restore();
+    render();
+  });
+  setTimeout(() => {
+    const i = undoStack.indexOf(entry);
+    if (i >= 0) undoStack.splice(i, 1);
+  }, 5500);
+}
+
+function showToast(msg, onUndo) {
+  const t = document.getElementById('toast');
+  t.querySelector('.msg').textContent = msg;
+  t.classList.add('visible');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('visible'), 5000);
+  const action = t.querySelector('.action');
+  action.onclick = () => {
+    onUndo();
+    t.classList.remove('visible');
+    clearTimeout(toastTimer);
+  };
+}
+
+// ===== Export / import =====
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `daily-${todayKey()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importJSON(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!data || !Array.isArray(data.tasks)) throw new Error('Неверный формат');
+      if (!confirm(`Импортировать ${data.tasks.length} задач? Текущие данные будут заменены (но останутся в localStorage до закрытия — можно отменить через ⌘Z).`)) return;
+      const before = JSON.parse(JSON.stringify(state));
+      Object.assign(state, migrate(data));
+      save();
+      render();
+      pushUndo('Данные импортированы', () => {
+        Object.assign(state, before);
+        save();
+      });
+    } catch (e) {
+      alert('Не удалось прочитать файл: ' + e.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ===== Wire global UI =====
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => { state.view = t.dataset.tab; save(); render(); });
+});
+
+document.getElementById('addForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const title = document.getElementById('newTitle').value.trim();
+  if (!title) return;
+  addTask({
+    title,
+    project: document.getElementById('newProject').value,
+    priority: document.getElementById('newPriority').value,
+    deadline: document.getElementById('newDeadline').value || null
+  });
+  document.getElementById('newTitle').value = '';
+  document.getElementById('newDeadline').value = '';
+  render();
+});
+
+document.getElementById('search').addEventListener('input', e => {
+  state.filter.search = e.target.value; save(); renderTaskList();
+});
+document.getElementById('filterStatus').addEventListener('change', e => {
+  state.filter.status = e.target.value; save(); renderTaskList();
+});
+document.getElementById('filterPriority').addEventListener('change', e => {
+  state.filter.priority = e.target.value; save(); renderTaskList();
+});
+document.getElementById('sort').addEventListener('change', e => {
+  state.sort = e.target.value; save(); renderTaskList();
+});
+document.getElementById('group').addEventListener('change', e => {
+  state.group = e.target.value; save(); renderTaskList();
+});
+document.getElementById('showDone').addEventListener('change', e => {
+  state.filter.showDone = e.target.checked; save(); renderTaskList();
+});
+
+document.getElementById('exportBtn').addEventListener('click', exportJSON);
+document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
+document.getElementById('importFile').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) importJSON(f);
+  e.target.value = '';
+});
+document.getElementById('helpBtn').addEventListener('click', openHelpModal);
+document.getElementById('tgBtn').addEventListener('click', () => {
+  window.open('https://t.me/DGerman11', '_blank', 'noopener');
+});
+
+// ===== Hotkeys =====
+function isTypingTarget(el) {
+  if (!el) return false;
+  const tag = el.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+}
+
+document.addEventListener('keydown', e => {
+  // Undo
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+    if (undoStack.length > 0 && !isTypingTarget(e.target)) {
+      e.preventDefault();
+      const last = undoStack.pop();
+      last.restore();
+      render();
+      const t = document.getElementById('toast');
+      t.classList.remove('visible');
+      return;
+    }
+  }
+  // Cmd/Ctrl+K — search
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    state.view = 'tasks'; renderTabs();
+    document.getElementById('search').focus();
+    document.getElementById('search').select();
+    return;
+  }
+  // Cmd/Ctrl+N — focus add input
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'n') {
+    e.preventDefault();
+    state.view = 'tasks'; renderTabs();
+    document.getElementById('newTitle').focus();
+    return;
+  }
+
+  if (isTypingTarget(e.target)) {
+    if (e.key === 'Escape' && openTaskId) { closePanel(); }
+    return;
+  }
+
+  // Esc — close panel
+  if (e.key === 'Escape' && openTaskId) { closePanel(); return; }
+
+  // ? — help
+  if (e.key === '?') { e.preventDefault(); openHelpModal(); return; }
+
+  // Drawer-only shortcuts
+  if (openTaskId) {
+    const task = state.tasks.find(t => t.id === openTaskId);
+    if (!task) return;
+    if (e.key === '1') { setPriority(task, 'high'); renderTaskList(); renderPanel(); return; }
+    if (e.key === '2') { setPriority(task, 'medium'); renderTaskList(); renderPanel(); return; }
+    if (e.key === '3') { setPriority(task, 'low'); renderTaskList(); renderPanel(); return; }
+    if (e.key.toLowerCase() === 's') {
+      const next = { todo: 'progress', progress: 'done', done: 'todo' }[task.status];
+      setStatus(task, next);
+      renderTaskList(); renderHeader(); renderOverdueBanner(); renderPanel();
+      return;
+    }
+  }
+});
+
+// ===== Theme =====
+const THEMES = ['auto', 'light', 'dark'];
+const THEME_ICON = { auto: '🖥', light: '☀', dark: '🌙' };
+const THEME_LABEL = { auto: 'Авто (по системе)', light: 'Светлая', dark: 'Тёмная' };
+const osDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+function applyTheme() {
+  const t = state.theme || 'auto';
+  document.documentElement.dataset.theme = t;
+  document.documentElement.dataset.osDark = osDark.matches ? '1' : '0';
+  // Update theme-color meta to match resolved theme
+  const isDark = t === 'dark' || (t === 'auto' && osDark.matches);
+  let meta = document.querySelector('meta[name="theme-color"]:not([media])');
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.name = 'theme-color';
+    document.head.appendChild(meta);
+  }
+  meta.content = isDark ? '#16171a' : '#796eff';
+  // Update button icon
+  const btn = document.getElementById('themeBtn');
+  if (btn) {
+    btn.textContent = THEME_ICON[t];
+    btn.title = `Тема: ${THEME_LABEL[t]} (клик — переключить)`;
+  }
+}
+
+function cycleTheme() {
+  const cur = state.theme || 'auto';
+  const next = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
+  state.theme = next;
+  save();
+  applyTheme();
+}
+
+document.getElementById('themeBtn').addEventListener('click', cycleTheme);
+osDark.addEventListener('change', applyTheme);
+applyTheme();
+
+// ===== PWA: register service worker =====
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+// ===== Mobile detection =====
+const isMobile = () => window.matchMedia('(max-width: 700px)').matches;
+
+// ===== Bottom tab bar =====
+document.querySelectorAll('.bb-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.bb;
+    if (target === 'tasks') {
+      state.view = 'tasks'; save(); render();
+    } else if (target === 'history') {
+      state.view = 'history'; save(); render();
+    } else if (target === 'filters') {
+      openFiltersSheet();
+    } else if (target === 'more') {
+      openMoreSheet();
+    }
+    syncBottomBar();
+  });
+});
+
+function syncBottomBar() {
+  document.querySelectorAll('.bb-tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.bb === state.view);
+  });
+}
+
+// ===== FAB =====
+const fab = document.getElementById('fab');
+fab.addEventListener('click', () => {
+  state.view = 'tasks';
+  render();
+  syncBottomBar();
+  const form = document.getElementById('addForm');
+  form.classList.toggle('open');
+  if (form.classList.contains('open')) {
+    setTimeout(() => document.getElementById('newTitle').focus(), 200);
+  }
+});
+// hide add-task panel when tapping outside (mobile only)
+document.addEventListener('click', e => {
+  if (!isMobile()) return;
+  const form = document.getElementById('addForm');
+  if (!form.classList.contains('open')) return;
+  if (form.contains(e.target) || e.target === fab) return;
+  form.classList.remove('open');
+});
+
+// ===== Filters bottom sheet =====
+function openFiltersSheet() {
+  closeAllSheets();
+  const overlay = document.createElement('div');
+  overlay.className = 'filters-sheet-overlay';
+  overlay.id = 'sheetOverlay';
+  const sheet = document.createElement('div');
+  sheet.className = 'filters-sheet';
+  sheet.id = 'sheetEl';
+  sheet.innerHTML = `
+    <h3>Фильтры и сортировка</h3>
+    <label><span>Поиск</span><input type="text" id="sheetSearch" value="${esc(state.filter.search)}" placeholder="..." style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:14px"></label>
+    <label><span>Группировка</span>
+      <select id="sheetGroup">
+        <option value="none">Без группировки</option>
+        <option value="date">По дате</option>
+        <option value="project">По проекту</option>
+        <option value="priority">По приоритету</option>
+      </select>
+    </label>
+    <label><span>Сортировка</span>
+      <select id="sheetSort">
+        <option value="deadline">По дедлайну</option>
+        <option value="priority">По приоритету</option>
+        <option value="created">По дате создания</option>
+        <option value="manual">Вручную</option>
+      </select>
+    </label>
+    <label><span>Статус</span>
+      <select id="sheetStatus">
+        <option value="all">Все</option>
+        <option value="todo">К выполнению</option>
+        <option value="progress">В процессе</option>
+        <option value="done">Сделано</option>
+      </select>
+    </label>
+    <label><span>Приоритет</span>
+      <select id="sheetPriority">
+        <option value="all">Любой</option>
+        <option value="high">Высокий</option>
+        <option value="medium">Средний</option>
+        <option value="low">Низкий</option>
+      </select>
+    </label>
+    <label><span>Сделанные</span>
+      <input type="checkbox" id="sheetShowDone" ${state.filter.showDone ? 'checked' : ''}>
+    </label>
+    <button class="btn btn-primary" id="sheetClose" style="margin-top:6px">Готово</button>
+  `;
+  document.body.appendChild(overlay);
+  document.body.appendChild(sheet);
+  sheet.querySelector('#sheetGroup').value = state.group;
+  sheet.querySelector('#sheetSort').value = state.sort;
+  sheet.querySelector('#sheetStatus').value = state.filter.status;
+  sheet.querySelector('#sheetPriority').value = state.filter.priority;
+
+  sheet.querySelector('#sheetSearch').addEventListener('input', e => {
+    state.filter.search = e.target.value; save(); renderTaskList();
+  });
+  sheet.querySelector('#sheetGroup').addEventListener('change', e => {
+    state.group = e.target.value; save(); renderTaskList();
+  });
+  sheet.querySelector('#sheetSort').addEventListener('change', e => {
+    state.sort = e.target.value; save(); renderTaskList();
+  });
+  sheet.querySelector('#sheetStatus').addEventListener('change', e => {
+    state.filter.status = e.target.value; save(); renderTaskList();
+  });
+  sheet.querySelector('#sheetPriority').addEventListener('change', e => {
+    state.filter.priority = e.target.value; save(); renderTaskList();
+  });
+  sheet.querySelector('#sheetShowDone').addEventListener('change', e => {
+    state.filter.showDone = e.target.checked; save(); renderTaskList();
+  });
+
+  const close = () => { overlay.remove(); sheet.remove(); state.view = 'tasks'; syncBottomBar(); };
+  overlay.addEventListener('click', close);
+  sheet.querySelector('#sheetClose').addEventListener('click', close);
+}
+
+// ===== "More" bottom sheet (export/import/help) =====
+function openMoreSheet() {
+  closeAllSheets();
+  const overlay = document.createElement('div');
+  overlay.className = 'filters-sheet-overlay';
+  overlay.id = 'sheetOverlay';
+  const sheet = document.createElement('div');
+  sheet.className = 'filters-sheet';
+  sheet.id = 'sheetEl';
+  const canShare = typeof navigator.canShare === 'function';
+  sheet.innerHTML = `
+    <h3>Действия</h3>
+    <button class="btn" id="moreTheme">${THEME_ICON[state.theme || 'auto']} Тема: ${THEME_LABEL[state.theme || 'auto']}</button>
+    <button class="btn" id="moreShare">📤 Поделиться (iCloud Drive)</button>
+    <button class="btn" id="moreExport">⤓ Скачать как файл</button>
+    <button class="btn" id="moreImport">⤒ Импорт из файла</button>
+    <button class="btn" id="moreHelp">? Горячие клавиши</button>
+    <button class="btn btn-primary" id="moreClose" style="margin-top:6px">Закрыть</button>
+  `;
+  document.body.appendChild(overlay);
+  document.body.appendChild(sheet);
+
+  const close = () => { overlay.remove(); sheet.remove(); state.view = 'tasks'; syncBottomBar(); };
+  overlay.addEventListener('click', close);
+  sheet.querySelector('#moreClose').addEventListener('click', close);
+  sheet.querySelector('#moreTheme').addEventListener('click', () => {
+    cycleTheme();
+    sheet.querySelector('#moreTheme').textContent = `${THEME_ICON[state.theme]} Тема: ${THEME_LABEL[state.theme]}`;
+  });
+  sheet.querySelector('#moreShare').addEventListener('click', () => { close(); shareJSON(); });
+  sheet.querySelector('#moreExport').addEventListener('click', () => { close(); exportJSON(); });
+  sheet.querySelector('#moreImport').addEventListener('click', () => { close(); document.getElementById('importFile').click(); });
+  sheet.querySelector('#moreHelp').addEventListener('click', () => { close(); openHelpModal(); });
+}
+
+function closeAllSheets() {
+  document.getElementById('sheetOverlay')?.remove();
+  document.getElementById('sheetEl')?.remove();
+}
+
+// ===== Share to iCloud Drive (Web Share API) =====
+async function shareJSON() {
+  const json = JSON.stringify(state, null, 2);
+  const filename = `daily-${todayKey()}.json`;
+  try {
+    const file = new File([json], filename, { type: 'application/json' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Резервная копия задач', text: 'Бэкап ежедневника' });
+      return;
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;
+  }
+  // Fallback: regular download
+  exportJSON();
+}
+
+// ===== Swipe actions =====
+function attachSwipe(swipeWrap, taskEl, taskId) {
+  let startX = null, startY = null, dx = 0, locked = null, active = false;
+  const TRIGGER = 80;
+
+  taskEl.addEventListener('touchstart', e => {
+    if (!isMobile()) return;
+    if (e.target.closest('.check')) return;
+    const t = e.touches[0];
+    startX = t.clientX; startY = t.clientY;
+    dx = 0; locked = null; active = true;
+    swipeWrap.classList.add('swiping');
+  }, { passive: true });
+
+  taskEl.addEventListener('touchmove', e => {
+    if (!active) return;
+    const t = e.touches[0];
+    const ddx = t.clientX - startX;
+    const ddy = t.clientY - startY;
+    if (locked === null) {
+      if (Math.abs(ddx) > 8 && Math.abs(ddx) > Math.abs(ddy)) locked = 'x';
+      else if (Math.abs(ddy) > 8) locked = 'y';
+    }
+    if (locked !== 'x') return;
+    dx = ddx;
+    taskEl.style.transform = `translateX(${dx}px)`;
+  }, { passive: true });
+
+  taskEl.addEventListener('touchend', () => {
+    if (!active) return;
+    active = false;
+    swipeWrap.classList.remove('swiping');
+    if (locked !== 'x') { taskEl.style.transform = ''; return; }
+    if (dx <= -TRIGGER) {
+      // swipe left → delete
+      taskEl.style.transform = `translateX(-100%)`;
+      setTimeout(() => {
+        deleteTaskWithUndo(taskId);
+        renderTaskList();
+        renderHeader();
+        renderOverdueBanner();
+      }, 180);
+    } else if (dx >= TRIGGER) {
+      // swipe right → toggle done
+      taskEl.style.transform = '';
+      const task = state.tasks.find(t => t.id === taskId);
+      if (task) {
+        setStatus(task, task.status === 'done' ? 'todo' : 'done');
+        renderHeader();
+        renderOverdueBanner();
+        renderTaskList();
+      }
+    } else {
+      taskEl.style.transform = '';
+    }
+  });
+
+  taskEl.addEventListener('touchcancel', () => {
+    active = false;
+    swipeWrap.classList.remove('swiping');
+    taskEl.style.transform = '';
+  });
+}
+
+// ===== Pull-to-refresh =====
+(function setupPullToRefresh() {
+  const indicator = document.getElementById('pullIndicator');
+  let startY = null, pulling = false, dy = 0;
+  const TRIGGER = 70;
+
+  document.addEventListener('touchstart', e => {
+    if (!isMobile()) return;
+    if (window.scrollY > 0) return;
+    if (e.target.closest('.panel, .filters-sheet')) return;
+    startY = e.touches[0].clientY;
+    pulling = true;
+    dy = 0;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!pulling) return;
+    dy = e.touches[0].clientY - startY;
+    if (dy > 0 && window.scrollY === 0) {
+      const v = Math.min(dy * 0.6, 90);
+      indicator.style.setProperty('--pull-y', v + 'px');
+      indicator.classList.add('pulling');
+      indicator.textContent = dy > TRIGGER ? '↻' : '↓';
+    } else {
+      indicator.classList.remove('pulling');
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', () => {
+    if (!pulling) return;
+    pulling = false;
+    if (dy > TRIGGER) {
+      indicator.classList.remove('pulling');
+      indicator.classList.add('refreshing');
+      indicator.textContent = '↻';
+      setTimeout(() => {
+        indicator.classList.remove('refreshing');
+        render();
+      }, 600);
+    } else {
+      indicator.classList.remove('pulling');
+    }
+    dy = 0;
+  });
+})();
+
+// ===== Wrap tasks with swipe layer on mobile =====
+const _origRenderTaskList = renderTaskList;
+renderTaskList = function() {
+  _origRenderTaskList();
+  if (!isMobile()) return;
+  document.querySelectorAll('#taskList .task').forEach(taskEl => {
+    if (taskEl.parentElement.classList.contains('task-swipe')) return;
+    const id = taskEl.dataset.id;
+    const wrap = document.createElement('div');
+    wrap.className = 'task-swipe';
+    wrap.innerHTML = '<div class="swipe-action swipe-right">✓</div><div class="swipe-action swipe-left">🗑</div>';
+    taskEl.parentNode.insertBefore(wrap, taskEl);
+    wrap.appendChild(taskEl);
+    attachSwipe(wrap, taskEl, id);
+  });
+  syncBottomBar();
+};
+
+// Initial
+render();
+syncBottomBar();
+</script>
+</body>
+</html>
