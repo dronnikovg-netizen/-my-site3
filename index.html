@@ -232,57 +232,102 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   color: var(--text-muted);
 }
 
-/* Sections bar (sub-projects) */
-.sections-bar {
+/* Section groups (Asana-style) */
+.section-group { margin-bottom: 8px; }
+.section-group .group-header {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text);
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  margin: -6px 0 14px 0;
-  padding-left: 14px;
-  border-left: 2px solid var(--border);
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  padding: 6px 4px;
+  margin: 8px 0 4px;
+  border-bottom: 1px solid var(--border);
 }
-.sections-bar:empty { display: none; }
-.section-chip {
+.section-group .chevron {
+  display: inline-block;
+  width: 14px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  transition: transform 0.15s;
+}
+.section-group.collapsed .chevron { transform: rotate(-90deg); }
+.section-group.collapsed .task-list { display: none; }
+.section-group.collapsed .add-task-row { display: none; }
+.section-group .name {
+  flex: 1;
+  min-width: 0;
+}
+.section-group .name[contenteditable="true"] {
+  outline: 1px dashed var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+.section-group .group-actions {
+  display: none;
+  gap: 6px;
+  margin-left: 8px;
+  align-items: center;
+}
+.section-group:hover .group-actions { display: inline-flex; }
+.section-group .group-actions button {
+  background: transparent;
+  border: none;
+  color: var(--text-light);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.section-group .group-actions button:hover { background: var(--hover); color: var(--text); }
+.section-group .group-actions .del:hover { color: var(--red); }
+
+.add-task-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 8px 22px;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: 6px;
+  transition: background 0.12s;
+}
+.add-task-row:hover { background: var(--hover); color: var(--text); }
+.add-task-row input {
+  flex: 1;
+  border: 1px solid var(--accent);
+  background: var(--card);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+}
+
+.add-section-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  border-radius: 14px;
-  font-size: 12px;
+  padding: 8px 14px;
+  margin-top: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
   background: transparent;
   color: var(--text-muted);
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: 0.15s;
-  font-family: inherit;
-}
-.section-chip:hover { background: var(--hover); color: var(--text); }
-.section-chip.active {
-  background: var(--accent-soft);
-  border-color: var(--accent-soft);
-  color: var(--accent);
-  font-weight: 500;
-}
-.section-chip[contenteditable="true"] {
-  outline: 1px dashed var(--accent);
-  outline-offset: 2px;
-}
-.section-chip .del {
-  margin-left: 2px;
-  color: var(--text-light);
   font-size: 13px;
-  line-height: 1;
+  font-family: inherit;
   cursor: pointer;
-  display: none;
-  padding: 0 2px;
 }
-.section-chip:hover .del { display: inline; }
-.section-chip .del:hover { color: var(--red); }
-.section-add {
-  border-style: dashed;
-  color: var(--text-muted);
-}
+.add-section-btn:hover { background: var(--hover); color: var(--text); border-color: var(--text-light); }
 
 /* Section drop target while dragging */
 .task-list.drop-section { background: var(--accent-soft); border-radius: 6px; min-height: 30px; }
@@ -1082,7 +1127,6 @@ select:focus, input[type="date"]:focus, input[type="time"]:focus, input[type="da
 
   <div id="view-tasks">
     <div class="projects-bar" id="projectsBar"></div>
-    <div class="sections-bar" id="sectionsBar"></div>
 
     <div class="filters">
       <input type="text" class="search" id="search" placeholder="Поиск по задачам... (⌘K)" aria-label="Поиск">
@@ -1178,6 +1222,7 @@ function defaultState() {
     tasks: [],
     projects: DEFAULT_PROJECTS.slice(),
     sections: [],
+    collapsedSections: [],
     filter: { project: 'all', section: 'all', status: 'all', priority: 'all', search: '', showDone: false },
     sort: 'deadline',
     group: 'none',
@@ -1192,6 +1237,7 @@ function migrate(s) {
   s.filter = Object.assign(defaultState().filter, s.filter || {});
   if (!Array.isArray(s.projects) || s.projects.length === 0) s.projects = DEFAULT_PROJECTS.slice();
   if (!Array.isArray(s.sections)) s.sections = [];
+  if (!Array.isArray(s.collapsedSections)) s.collapsedSections = [];
   if (!Array.isArray(s.tasks)) s.tasks = [];
   s.tasks.forEach(t => {
     if (!t.history) t.history = [];
@@ -1527,8 +1573,14 @@ function visibleTasks() {
   return list;
 }
 
+function effectiveGroupMode() {
+  // When a single project is selected, default to section grouping (Asana-style)
+  if (state.group === 'none' && state.filter.project !== 'all') return 'section';
+  return state.group;
+}
+
 function groupTasks(tasks) {
-  const mode = state.group;
+  const mode = effectiveGroupMode();
   if (mode === 'none') return [{ key: '_', label: '', tasks }];
   if (mode === 'date') {
     const buckets = {
@@ -1637,7 +1689,6 @@ function render() {
   renderOverdueBanner();
   renderTabs();
   renderProjectsBar();
-  renderSectionsBar();
   renderProjectSelect();
   renderFilters();
   renderTaskList();
@@ -1720,7 +1771,6 @@ function renderProjectsBar() {
       }
       save();
       renderProjectsBar();
-      renderSectionsBar();
       renderTaskList();
     });
   });
@@ -1732,75 +1782,6 @@ function renderProjectsBar() {
     });
   });
   document.getElementById('addProjectBtn').addEventListener('click', openAddProjectModal);
-}
-
-function renderSectionsBar() {
-  const bar = document.getElementById('sectionsBar');
-  if (!bar) return;
-  const pid = state.filter.project;
-  if (pid === 'all') { bar.innerHTML = ''; return; }
-  const sections = sectionsByProject(pid);
-  let html = `<button class="section-chip ${state.filter.section === 'all' ? 'active' : ''}" data-section="all">Все разделы</button>`;
-  for (const s of sections) {
-    html += `<button class="section-chip ${state.filter.section === s.id ? 'active' : ''}" data-section="${s.id}" title="Двойной клик — переименовать">
-      <span class="name">${esc(s.name)}</span>
-      <span class="del" data-del-section="${s.id}" title="Удалить раздел">×</span>
-    </button>`;
-  }
-  html += `<button class="section-chip section-add" id="addSectionBtn">+ Подраздел</button>`;
-  bar.innerHTML = html;
-
-  bar.querySelectorAll('[data-section]').forEach(el => {
-    el.addEventListener('click', e => {
-      if (e.target.dataset.delSection) return;
-      if (el.isContentEditable) return;
-      state.filter.section = el.dataset.section;
-      save();
-      renderSectionsBar();
-      renderTaskList();
-    });
-    // Inline rename: dblclick on a real section (not "all")
-    if (el.dataset.section !== 'all') {
-      el.addEventListener('dblclick', e => {
-        e.preventDefault();
-        const nameEl = el.querySelector('.name');
-        if (!nameEl) return;
-        nameEl.contentEditable = 'true';
-        el.classList.add('editing');
-        nameEl.focus();
-        const range = document.createRange();
-        range.selectNodeContents(nameEl);
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
-        const finish = (commit) => {
-          nameEl.contentEditable = 'false';
-          el.classList.remove('editing');
-          if (commit) renameSection(el.dataset.section, nameEl.textContent);
-          renderSectionsBar();
-          renderTaskList();
-        };
-        nameEl.addEventListener('blur', () => finish(true), { once: true });
-        nameEl.addEventListener('keydown', ev => {
-          if (ev.key === 'Enter') { ev.preventDefault(); nameEl.blur(); }
-          if (ev.key === 'Escape') {
-            ev.preventDefault();
-            nameEl.textContent = sectionById(el.dataset.section).name;
-            finish(false);
-          }
-        });
-      });
-    }
-  });
-  bar.querySelectorAll('[data-del-section]').forEach(el => {
-    el.addEventListener('click', e => {
-      e.stopPropagation();
-      deleteSection(el.dataset.delSection);
-      render();
-    });
-  });
-  const addBtn = document.getElementById('addSectionBtn');
-  if (addBtn) addBtn.addEventListener('click', () => openAddSectionModal(pid));
 }
 
 function renderProjectSelect() {
@@ -1822,7 +1803,12 @@ function renderFilters() {
 function renderTaskList() {
   const list = visibleTasks();
   const root = document.getElementById('taskList');
-  if (list.length === 0) {
+  const mode = effectiveGroupMode();
+  const isSectionMode = mode === 'section';
+  const pid = state.filter.project;
+  const showAddSection = isSectionMode && pid !== 'all';
+
+  if (list.length === 0 && !showAddSection) {
     root.innerHTML = `<div class="empty">
       <div class="icon">📭</div>
       <div>Задач не найдено</div>
@@ -1831,30 +1817,168 @@ function renderTaskList() {
     return;
   }
   const groups = groupTasks(list);
-  const orderDnd = state.sort === 'manual' && state.group === 'none';
-  const sectionDnd = state.group === 'section';
+  const orderDnd = state.sort === 'manual' && mode === 'none';
+  const sectionDnd = isSectionMode;
   const dnd = orderDnd || sectionDnd;
   let html = '';
   for (const g of groups) {
-    const headerCls = g.danger ? 'group-header group-overdue' : 'group-header';
-    const sectionAttr = sectionDnd ? ` data-section="${g.sectionId == null ? '_none' : esc(g.sectionId)}"` : '';
-    const header = state.group === 'none' ? '' :
-      `<div class="${headerCls}"${sectionAttr}>${g.color ? `<span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${g.color}"></span> ` : ''}${esc(g.label)}<span class="count">${g.tasks.length}</span></div>`;
-    html += `<div class="task-group">
-      ${header}
-      <div class="task-list" data-group="${esc(g.key)}"${sectionAttr}>
-        ${g.tasks.map(t => taskHtml(t, dnd)).join('')}
-      </div>
-    </div>`;
+    if (isSectionMode) {
+      html += sectionGroupHtml(g, dnd);
+    } else {
+      const headerCls = g.danger ? 'group-header group-overdue' : 'group-header';
+      const header = mode === 'none' ? '' :
+        `<div class="${headerCls}">${g.color ? `<span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${g.color}"></span> ` : ''}${esc(g.label)}<span class="count">${g.tasks.length}</span></div>`;
+      html += `<div class="task-group">
+        ${header}
+        <div class="task-list" data-group="${esc(g.key)}">
+          ${g.tasks.map(t => taskHtml(t, dnd)).join('')}
+        </div>
+      </div>`;
+    }
+  }
+  if (showAddSection) {
+    html += `<button class="add-section-btn" id="addSectionInlineBtn">+ Добавить раздел</button>`;
   }
   root.innerHTML = html;
 
   root.querySelectorAll('.task').forEach(el => attachTaskHandlers(el, dnd));
   if (sectionDnd) attachSectionDropHandlers(root);
+  if (isSectionMode) attachSectionGroupHandlers(root);
+  const addSecBtn = document.getElementById('addSectionInlineBtn');
+  if (addSecBtn) addSecBtn.addEventListener('click', () => openAddSectionModal(pid));
+}
+
+function sectionGroupHtml(g, dnd) {
+  const sid = g.sectionId == null ? '_none' : g.sectionId;
+  const collapsed = state.collapsedSections.includes(sid);
+  const sectionAttr = ` data-section="${esc(sid)}"`;
+  const isReal = !!g.sectionId;
+  const actions = isReal ? `<span class="group-actions">
+      <button class="del" title="Удалить раздел" data-act="del-section">×</button>
+    </span>` : '';
+  return `<div class="task-group section-group ${collapsed ? 'collapsed' : ''}"${sectionAttr}>
+    <div class="group-header"${sectionAttr}>
+      <span class="chevron">▼</span>
+      <span class="name" ${isReal ? 'title="Двойной клик — переименовать"' : ''}>${esc(g.label)}</span>
+      <span class="count">${g.tasks.length}</span>
+      ${actions}
+    </div>
+    <div class="task-list" data-group="${esc(g.key)}"${sectionAttr}>
+      ${g.tasks.map(t => taskHtml(t, dnd)).join('')}
+    </div>
+    <div class="add-task-row" data-section="${esc(sid)}" tabindex="0">
+      <span>+</span><span>Добавить задачу…</span>
+    </div>
+  </div>`;
+}
+
+function attachSectionGroupHandlers(root) {
+  root.querySelectorAll('.section-group').forEach(grp => {
+    const sid = grp.dataset.section;
+    const header = grp.querySelector(':scope > .group-header');
+    const chevron = header.querySelector('.chevron');
+    const nameEl = header.querySelector('.name');
+    const delBtn = header.querySelector('[data-act="del-section"]');
+    const addRow = grp.querySelector(':scope > .add-task-row');
+
+    // Toggle collapse on header click (but not on rename/del)
+    header.addEventListener('click', e => {
+      if (e.target.closest('[data-act]')) return;
+      if (nameEl.isContentEditable) return;
+      const i = state.collapsedSections.indexOf(sid);
+      if (i >= 0) state.collapsedSections.splice(i, 1);
+      else state.collapsedSections.push(sid);
+      save();
+      grp.classList.toggle('collapsed');
+    });
+
+    // Inline rename via dblclick on name (only real sections)
+    if (sid !== '_none') {
+      nameEl.addEventListener('dblclick', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        nameEl.contentEditable = 'true';
+        nameEl.focus();
+        const range = document.createRange();
+        range.selectNodeContents(nameEl);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        const finish = (commit) => {
+          nameEl.contentEditable = 'false';
+          if (commit) renameSection(sid, nameEl.textContent);
+          renderTaskList();
+        };
+        nameEl.addEventListener('blur', () => finish(true), { once: true });
+        nameEl.addEventListener('keydown', ev => {
+          if (ev.key === 'Enter') { ev.preventDefault(); nameEl.blur(); }
+          if (ev.key === 'Escape') {
+            ev.preventDefault();
+            const sec = sectionById(sid);
+            if (sec) nameEl.textContent = sec.name;
+            finish(false);
+          }
+        });
+      });
+    }
+
+    if (delBtn) {
+      delBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        deleteSection(sid);
+        render();
+      });
+    }
+
+    // Inline add-task row
+    if (addRow) {
+      addRow.addEventListener('click', () => {
+        if (addRow.querySelector('input')) return;
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.placeholder = 'Название задачи и Enter…';
+        addRow.innerHTML = '';
+        addRow.appendChild(inp);
+        inp.focus();
+        let cancelled = false;
+        const cancel = () => { cancelled = true; renderTaskList(); };
+        const submit = () => {
+          if (cancelled) return;
+          const v = inp.value.trim();
+          if (!v) { cancel(); return; }
+          const project = pickProjectForNewTask(sid);
+          if (!project) { cancel(); return; }
+          const t = addTask({ title: v, project, priority: 'medium', deadline: null });
+          if (t) {
+            const realSid = sid === '_none' ? null : sid;
+            if (realSid) setSection(t, realSid);
+          }
+          renderHeader();
+          renderTaskList();
+        };
+        inp.addEventListener('keydown', ev => {
+          if (ev.key === 'Enter') { ev.preventDefault(); submit(); }
+          if (ev.key === 'Escape') { ev.preventDefault(); cancel(); }
+        });
+        inp.addEventListener('blur', submit, { once: true });
+      });
+    }
+  });
+}
+
+function pickProjectForNewTask(sectionKey) {
+  // If an explicit section, use its project
+  if (sectionKey && sectionKey !== '_none') {
+    const s = sectionById(sectionKey);
+    if (s) return s.projectId;
+  }
+  // Else: current filter project, or first project
+  if (state.filter.project !== 'all') return state.filter.project;
+  return state.projects[0] && state.projects[0].id;
 }
 
 function attachSectionDropHandlers(root) {
-  const targets = root.querySelectorAll('[data-section]');
+  const targets = root.querySelectorAll('.task-list[data-section], .group-header[data-section]');
   targets.forEach(el => {
     el.addEventListener('dragover', e => {
       if (!dragId) return;
@@ -1962,7 +2086,7 @@ function attachTaskHandlers(el, draggable) {
       const rect = el.getBoundingClientRect();
       const above = (e.clientY - rect.top) < rect.height / 2;
       // When grouped by section, dropping onto a task also reassigns section
-      if (state.group === 'section') {
+      if (effectiveGroupMode() === 'section') {
         const src = state.tasks.find(t => t.id === dragId);
         const dst = state.tasks.find(t => t.id === id);
         if (src && dst) setSection(src, dst.section || null);
@@ -2110,7 +2234,6 @@ function wirePanel(panel, task) {
       } else {
         setSection(task, v);
         renderTaskList();
-        renderSectionsBar();
       }
     });
   }
